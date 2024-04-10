@@ -45,7 +45,6 @@ public class LeafShapeGroup extends ShapeGroup {
 	 *    | shape == null
 	 * @throws IllegalArgumentException if {@code shape} has less than three vertices
 	 *    | shape.getVertices().length < 3
-	 * @mutates | this
 	 * @post | getShape() == shape
 	 * @post | getParentGroup() == null
 	 * @post | getOriginalExtent().getLeft() == Arrays.stream(shape.getVertices()).mapToInt(p -> p.getX()).min().getAsInt()

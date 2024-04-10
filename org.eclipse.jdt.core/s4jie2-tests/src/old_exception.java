@@ -24,7 +24,7 @@ class Foo {
 	}
 	
 	/**
-	 * @post | old(foo.x != 0)
+	 * @post | old(foo.getX() != 0)
 	 */
 	static void buggyDocs(Foo foo) {
 		

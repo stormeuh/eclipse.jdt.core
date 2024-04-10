@@ -514,36 +514,45 @@ public class FormalSpecification {
 
 		int thisElementModifiers = this.method.binding.modifiers;
 		ReferenceBinding thisClassBinding = this.method.binding.declaringClass;
-
+		boolean allowThisReferencesInPreState = !(this.method instanceof ConstructorDeclaration);
+		
 		if (this.preconditions != null)
 			for (Expression e : this.preconditions)
-				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+				check(thisElementModifiers, thisClassBinding, this.method.scope, e, allowThisReferencesInPreState);
 		if (this.throwsConditions != null)
 			for (Expression e : this.throwsConditions)
-				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+				check(thisElementModifiers, thisClassBinding, this.method.scope, e, allowThisReferencesInPreState);
 		if (this.mayThrowConditions != null)
 			for (Expression e : this.mayThrowConditions)
-				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+				check(thisElementModifiers, thisClassBinding, this.method.scope, e, allowThisReferencesInPreState);
 		if (this.postconditions != null)
 			for (Expression e : this.postconditions)
-				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+				check(thisElementModifiers, thisClassBinding, this.method.scope, e, true, allowThisReferencesInPreState);
 
 		if (this.inspectsExpressions != null)
 			for (Expression e : this.inspectsExpressions)
-				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+				check(thisElementModifiers, thisClassBinding, this.method.scope, e, allowThisReferencesInPreState);
 		if (this.mutatesExpressions != null)
 			for (Expression e : this.mutatesExpressions)
-				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+				check(thisElementModifiers, thisClassBinding, this.method.scope, e, allowThisReferencesInPreState);
 		if (this.mutatesPropertiesExpressions != null)
 			for (Expression e : this.mutatesPropertiesExpressions)
-				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
+				check(thisElementModifiers, thisClassBinding, this.method.scope, e, allowThisReferencesInPreState);
 		// TODO(fs4j): Enable once @creates clauses are typechecked
 //		if (this.createsExpressions != null)
 //			for (Expression e : this.createsExpressions)
 //				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
 	}
-
+	
 	public static void check(int thisElementModifiers, ReferenceBinding thisClassBinding, BlockScope thisScope, Expression e) {
+		check(thisElementModifiers, thisClassBinding, thisScope, e, true);
+	}
+	
+	public static void check(int thisElementModifiers, ReferenceBinding thisClassBinding, BlockScope thisScope, Expression e, boolean allowThisReferences) {
+		check(thisElementModifiers, thisClassBinding, thisScope, e, allowThisReferences, allowThisReferences);
+	}
+	
+	public static void check(int thisElementModifiers, ReferenceBinding thisClassBinding, BlockScope thisScope, Expression e, boolean allowThisReferences, boolean allowThisReferencesInOldExpressions) {
 		ASTVisitor checker = new ASTVisitor() {
 
 			private boolean isVisible(int modifiers, PackageBinding packageBinding) {
@@ -683,6 +692,8 @@ public class FormalSpecification {
 
 			@Override
 			public boolean visit(MessageSend messageSend, BlockScope scope) {
+				if (!allowThisReferences && messageSend.receiverIsImplicitThis())
+					scope.problemReporter().cannotReferenceObjectBeforeConstructorRuns(messageSend);
 				checkMethodReference(messageSend.nameSourcePosition, messageSend.binding);
 				return super.visit(messageSend, scope);
 			}
@@ -741,6 +752,11 @@ public class FormalSpecification {
 			}
 
 			private void checkQualifiedNameReference(QualifiedNameReference reference) {
+				if (!allowThisReferences
+						&& reference.binding instanceof FieldBinding
+						&& (((FieldBinding)reference.binding).modifiers & ClassFileConstants.AccStatic) == 0
+						&& reference.indexOfFirstFieldBinding == 1)
+					thisScope.problemReporter().cannotInspectObjectBeforeConstructorRuns(reference);
 				checkBinding(reference, reference.binding);
 				if (reference.otherBindings != null)
 					for (int i = 0; i < reference.otherBindings.length; i++)
@@ -773,12 +789,16 @@ public class FormalSpecification {
 
 			@Override
 			public boolean visit(SingleNameReference singleNameReference, BlockScope scope) {
+				if (!allowThisReferences && singleNameReference.binding instanceof FieldBinding && (((FieldBinding)singleNameReference.binding).modifiers & ClassFileConstants.AccStatic) == 0)
+					scope.problemReporter().cannotInspectObjectBeforeConstructorRuns(singleNameReference);
 				checkBinding(singleNameReference, singleNameReference.binding);
 				return super.visit(singleNameReference, scope);
 			}
 
 			@Override
 			public boolean visit(SingleNameReference singleNameReference, ClassScope scope) {
+				if (!allowThisReferences && singleNameReference.binding instanceof FieldBinding && (((FieldBinding)singleNameReference.binding).modifiers & ClassFileConstants.AccStatic) == 0)
+					scope.problemReporter().cannotInspectObjectBeforeConstructorRuns(singleNameReference);
 				checkBinding(singleNameReference, singleNameReference.binding);
 				return super.visit(singleNameReference, scope);
 			}
@@ -806,7 +826,35 @@ public class FormalSpecification {
 				scope.problemReporter().tryInJavadoc(tryStatement);
 				return super.visit(tryStatement, scope);
 			}
-
+			
+			@Override
+			public boolean visit(ThisReference thisReference, BlockScope scope) {
+				if (!allowThisReferences && !thisReference.isImplicitThis())
+					scope.problemReporter().cannotReferenceObjectBeforeConstructorRuns(thisReference);
+				return super.visit(thisReference, scope);
+			}
+			
+			@Override
+			public boolean visit(ThisReference thisReference, ClassScope scope) {
+				if (!allowThisReferences && !thisReference.isImplicitThis())
+					scope.problemReporter().cannotReferenceObjectBeforeConstructorRuns(thisReference);
+				return super.visit(thisReference, scope);
+			}
+			
+			@Override
+			public boolean visit(SuperReference superReference, BlockScope scope) {
+				if (!allowThisReferences)
+					scope.problemReporter().cannotReferenceObjectBeforeConstructorRuns(superReference);
+				return super.visit(superReference, scope);
+			}
+			
+			@Override
+			public boolean visit(OldExpression oldExpression, BlockScope blockScope) {
+				if (oldExpression.expression != null)
+					check(thisElementModifiers, thisClassBinding, thisScope, oldExpression.expression, allowThisReferencesInOldExpressions);
+				return super.visit(oldExpression, blockScope);
+			}
+			
 		};
 
 		e.traverse(checker, thisScope);

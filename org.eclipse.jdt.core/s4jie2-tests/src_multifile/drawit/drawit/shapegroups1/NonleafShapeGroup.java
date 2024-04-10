@@ -120,7 +120,6 @@ public class NonleafShapeGroup extends ShapeGroup {
 	 * Initializes this object to represent a non-leaf shape group that directly contains the given
 	 * subgroups, in the given order.
 	 * 
-	 * @mutates | this
 	 * @mutates_properties | (...subgroups).getParentGroup()
 	 * @inspects | subgroups
 	 * 

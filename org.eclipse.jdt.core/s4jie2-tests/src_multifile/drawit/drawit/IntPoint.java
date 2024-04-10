@@ -74,7 +74,6 @@ public class IntPoint {
 	
 	/** Initializes this point with the given coordinates.
 	 * 
-	 * @mutates | this
 	 * @post | getX() == x
 	 * @post | getY() == y
 	 */

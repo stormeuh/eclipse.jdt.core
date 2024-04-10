@@ -62,7 +62,6 @@ public class RoundedPolygon {
 	/**
 	 * Initializes this rounded polygon with an empty list of vertices, a radius of zero, and color yellow.
 	 * 
-	 * @mutates | this
 	 * @post | getVertices().length == 0
 	 * @post | getRadius() == 0
 	 * @post | getColor().equals(Color.yellow)

@@ -32,7 +32,6 @@ public class Team {
 	/**
 	 * Initializes this object as representing an empty team.
 	 * 
-	 * @mutates | this
 	 * @post This team has no members.
 	 *    | getMembers().isEmpty()
 	 */

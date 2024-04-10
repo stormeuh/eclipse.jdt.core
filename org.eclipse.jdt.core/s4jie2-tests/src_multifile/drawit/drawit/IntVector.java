@@ -72,7 +72,6 @@ public class IntVector {
 	/**
 	 * Initializes this object with the given coordinates.
 	 * 
-	 * @mutates | this
 	 * @post | getX() == x
 	 * @post | getY() == y
 	 */

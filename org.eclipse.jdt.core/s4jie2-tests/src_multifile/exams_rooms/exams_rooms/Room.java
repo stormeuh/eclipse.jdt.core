@@ -40,7 +40,6 @@ public class Room {
 	}
 	
 	/**
-	 * @mutates | this
 	 * @post | getExams().isEmpty()
 	 */
 	public Room() {}
