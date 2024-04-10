@@ -1380,6 +1380,19 @@ public class s4jie2TestSuite {
 	    		+ "	at Main.<init>(issue34bis.java:11)\n"
 	    		+ "	at Main.main(issue34bis.java:26)\n");
 		testCompileAndRun(true, "issue35", true, "", "");
+		testCompile("issue40", false, "",
+				"----------\n"
+				+ "1. ERROR in SOURCE_FILE_FULL_PATH (at line 2)\n"
+				+ "	/** @throws | true */\n"
+				+ "	    ^^^^^^^\n"
+				+ "@throws clause must specify exception type\n"
+				+ "----------\n"
+				+ "2. ERROR in SOURCE_FILE_FULL_PATH (at line 4)\n"
+				+ "	/** @may_throw | true */\n"
+				+ "	    ^^^^^^^^^^\n"
+				+ "@may_throw clause must specify exception type\n"
+				+ "----------\n"
+				+ "2 problems (2 errors)\n");
 			    
 		System.out.println("s4jie2TestSuite: All tests passed.");
 	}

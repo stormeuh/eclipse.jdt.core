@@ -4428,6 +4428,20 @@ public void mutatesPropertiesMethodCallShouldNotSpecifyArguments(ASTNode node) {
 			node.sourceStart,
 			node.sourceEnd);
 }
+public void throwsClauseMustSpecifyExceptionType(int tagStart, int tagEnd) {
+	this.handle(32108,
+			new String[] {},
+			new String[] {},
+			tagStart,
+			tagEnd);
+}
+public void mayThrowClauseMustSpecifyExceptionType(int tagStart, int tagEnd) {
+	this.handle(32109,
+			new String[] {},
+			new String[] {},
+			tagStart,
+			tagEnd);
+}
 public void invalidField(QualifiedNameReference nameRef, FieldBinding field, int index, TypeBinding searchedType) {
 	//the resolution of the index-th field of qname failed
 	//qname.otherBindings[index] is the binding that has produced the error

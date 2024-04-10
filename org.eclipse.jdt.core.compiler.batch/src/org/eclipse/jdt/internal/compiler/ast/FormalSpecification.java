@@ -39,7 +39,7 @@ public class FormalSpecification {
 	private static final char[] LAMBDA_PARAMETER2_NAME = " $exception".toCharArray(); //$NON-NLS-1$
 	private static final char[] RESULT_NAME = "result".toCharArray(); //$NON-NLS-1$
 	private static final char[] THROWS_CLAUSES_FAILED_COUNT_VARIABLE_NAME = "$throwsClausesFailedCount".toCharArray(); //$NON-NLS-1$
-	
+
 	private static QualifiedTypeReference getTypeReference(String name) {
 		String[] components = name.split("\\."); //$NON-NLS-1$
 		char[][] sources = new char[components.length][];
@@ -48,12 +48,12 @@ public class FormalSpecification {
 			sources[i] = components[i].toCharArray();
 		return new QualifiedTypeReference(sources, poss);
 	}
-	
+
 	private static IntLiteral createIntLiteral(int value, int sourceStart, int sourceEnd) {
 		char[] literalChars = String.valueOf(value).toCharArray();
 		return new IntLiteral(literalChars, literalChars, sourceStart, sourceEnd);
 	}
-	
+
 	private static QualifiedTypeReference javaLangObject() { return getTypeReference("java.lang.Object"); } //$NON-NLS-1$
 	private static QualifiedTypeReference javaLangThrowable() { return getTypeReference("java.lang.Throwable"); } //$NON-NLS-1$
 	private static QualifiedTypeReference javaLangRuntimeException() { return getTypeReference("java.lang.RuntimeException"); } //$NON-NLS-1$
@@ -76,13 +76,13 @@ public class FormalSpecification {
 			default: return reference;
 		}
 	}
-	
+
 	private static QualifiedTypeReference getJavaUtilConsumerOf(TypeReference typeArgument) {
 		TypeReference[][] typeArguments = new TypeReference[][] { null, null, null, {typeArgument}};
 		QualifiedTypeReference javaUtilFunctionConsumer = javaUtilFunctionConsumer();
 		return new ParameterizedQualifiedTypeReference(javaUtilFunctionConsumer.tokens, typeArguments, 0, javaUtilFunctionConsumer.sourcePositions);
 	}
-	
+
 	private static QualifiedTypeReference getJavaUtilBiConsumerOf(TypeReference typeArgument1, TypeReference typeArgument2) {
 		TypeReference[][] typeArguments = new TypeReference[][] { null, null, null, {typeArgument1, typeArgument2}};
 		QualifiedTypeReference javaUtilFunctionBiConsumer = javaUtilFunctionBiConsumer();
@@ -112,13 +112,13 @@ public class FormalSpecification {
 	public TypeReference[] mayThrowExceptionTypeNames;
 	public Expression[] mayThrowConditions;
 	public Expression[] postconditions;
-	
+
 	// All of the below are null if no corresponding Javadoc tag is present; they are an empty array if an empty tag is present.
 	public Expression[] inspectsExpressions;
 	public Expression[] mutatesExpressions;
 	public Expression[] mutatesPropertiesExpressions;
 	public Expression[] createsExpressions;
-	
+
 	public LambdaExpression preconditionLambda;
 	public Block block;
 	public LocalDeclaration postconditionVariableDeclaration;
@@ -202,10 +202,10 @@ public class FormalSpecification {
 			output.append(" */"); //$NON-NLS-1$
 		}
 	}
-	
+
 	private void resolveEffectClause(Expression[] expressions) {
 		TypeBinding javaLangObject = this.method.scope.getJavaLangObject();
-		
+
 		if (expressions != null) {
 			for (Expression e : expressions) {
 				if (e instanceof SpreadExpression)
@@ -215,30 +215,30 @@ public class FormalSpecification {
 			}
 		}
 	}
-	
+
 	public void initializeMethodBinding() {
-		
+
 		if ((this.method.modifiers & (ClassFileConstants.AccStatic | ClassFileConstants.AccPrivate | ClassFileConstants.AccFinal)) == 0
 				&& !this.method.binding.declaringClass.isFinal() && (this.preconditions != null || this.postconditions != null || this.throwsConditions != null)) {
 
 			this.method.binding.hasSpecificationMethod = true;
-		    
+
 		}
 
 	}
-	
+
 	public void resolve() {
 		if (this.method.ignoreFurtherInvestigation)
 			return;
-		
+
 		if (this.mayThrowConditions != null)
 			for (Expression e : this.mayThrowConditions)
 				e.resolveTypeExpecting(this.method.scope, TypeBinding.BOOLEAN);
-		
+
 		resolveEffectClause(this.inspectsExpressions);
 		resolveEffectClause(this.mutatesExpressions);
 		//resolveEffectClause(this.createsExpressions); // @creates expressions can refer to 'result'
-		
+
 		if (this.mutatesPropertiesExpressions != null) {
 			for (Expression e : this.mutatesPropertiesExpressions) {
 				if (!(e instanceof MessageSend))
@@ -266,7 +266,7 @@ public class FormalSpecification {
 				}
 			}
 		}
-		
+
 		{
 			int overloadCount = this.method.scope.enclosingClassScope().registerOverload(this.method.selector);
 			MessageSend preconditionLambdaCall = new MessageSend();
@@ -330,7 +330,7 @@ public class FormalSpecification {
 							for (int i = 0; i < name.length; i++) { // JVMS 4.2.2 field names cannot contain . ; [ / .
 								switch (name[i]) {
 									case '.': name[i] = '\u2024'; break; // ONE DOT LEADER
-									case ';': name[i] = '\u204f'; break; // REVERSED SEMICOLON 
+									case ';': name[i] = '\u204f'; break; // REVERSED SEMICOLON
 									case '[': name[i] = '\u298b'; break; // LEFT SQUARE BRACKET WITH UNDERBAR
 									case ']': name[i] = '\u298c'; break; // RIGHT SQUARE BRACKET WITH UNDERBAR
 									case '/': name[i] = '\u2afd'; break; // DOUBLE SOLIDUS OPERATOR
@@ -344,7 +344,7 @@ public class FormalSpecification {
 							if (distinctExpression == null) {
 								distinctExpression = new OldExpression.DistinctExpression();
 								oldExpressions.put(nameString, distinctExpression);
-								
+
 								distinctExpression.exceptionDeclaration = new LocalDeclaration(exceptionName, oldExpression.sourceStart, oldExpression.sourceEnd);
 								distinctExpression.exceptionDeclaration.type = javaLangThrowable();
 								distinctExpression.exceptionDeclaration.initialization = new NullLiteral(oldExpression.sourceStart, oldExpression.sourceEnd);
@@ -362,14 +362,14 @@ public class FormalSpecification {
 										distinctExpression.innerDeclaration,
 										new Assignment(new SingleNameReference(name, pos), new SingleNameReference(innerName, pos), oldExpression.sourceEnd)
 								};
-								
+
 								char[] catchArgumentName = "$exception".toCharArray(); //$NON-NLS-1$
 								Argument catchArgument = new Argument(catchArgumentName, pos, javaLangThrowable(), 0);
 								Block catchBlock = new Block(0);
 								catchBlock.statements = new Statement[] {
 										new Assignment(new SingleNameReference(exceptionName, pos), new SingleNameReference(catchArgumentName, pos), oldExpression.sourceEnd)
 								};
-								
+
 								TryStatement tryStatement = new TryStatement();
 								tryStatement.tryBlock = tryBlock;
 								tryStatement.catchArguments = new Argument[] {catchArgument};
@@ -381,16 +381,19 @@ public class FormalSpecification {
 							oldExpression.exceptionReference = new SingleNameReference(exceptionName, pos);
 							return false;
 						}
-						
+
 					}, this.method.scope);
 				}
 				blockDeclarationsCount += 2 * oldExpressions.size();
-				
+
 				ArrayList<Statement> postconditionBlockStatements = new ArrayList<>();
 				int postconditionBlockDeclarationsCount = 0;
-				
+
 				if (this.throwsConditions != null) {
 					for (int i = 0; i < this.throwsConditions.length; i++) {
+						if (this.throwsExceptionTypeNames[i] == null)
+							continue;
+
 						Expression e = this.throwsConditions[i];
 						Expression condition1 = new EqualExpression(
 										new SingleNameReference(THROWS_CLAUSES_FAILED_COUNT_VARIABLE_NAME, (e.sourceStart << 32) | e.sourceEnd),
@@ -424,7 +427,7 @@ public class FormalSpecification {
 					Statement thenStatement = new ReturnStatement(null, this.method.bodyStart, this.method.bodyStart);
 					postconditionBlockStatements.add(new IfStatement(condition, thenStatement, this.method.bodyStart, this.method.bodyStart));
 				}
-				
+
 				LocalDeclaration resultDeclaration = null;
 				if (this.method instanceof MethodDeclaration) {
 					MethodDeclaration md = (MethodDeclaration)this.method;
@@ -508,10 +511,10 @@ public class FormalSpecification {
 			for (Statement s : this.statementsForMethodBody)
 				s.resolve(this.method.scope);
 		}
-		
+
 		int thisElementModifiers = this.method.binding.modifiers;
 		ReferenceBinding thisClassBinding = this.method.binding.declaringClass;
-		
+
 		if (this.preconditions != null)
 			for (Expression e : this.preconditions)
 				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
@@ -524,7 +527,7 @@ public class FormalSpecification {
 		if (this.postconditions != null)
 			for (Expression e : this.postconditions)
 				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
-		
+
 		if (this.inspectsExpressions != null)
 			for (Expression e : this.inspectsExpressions)
 				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
@@ -539,10 +542,10 @@ public class FormalSpecification {
 //			for (Expression e : this.createsExpressions)
 //				check(thisElementModifiers, thisClassBinding, this.method.scope, e);
 	}
-	
+
 	public static void check(int thisElementModifiers, ReferenceBinding thisClassBinding, BlockScope thisScope, Expression e) {
 		ASTVisitor checker = new ASTVisitor() {
-			
+
 			private boolean isVisible(int modifiers, PackageBinding packageBinding) {
 				if ((modifiers & ClassFileConstants.AccPublic) != 0)
 					return true;
@@ -562,11 +565,11 @@ public class FormalSpecification {
 				}
 				return true;
 			}
-			
+
 			private boolean isVisible(ReferenceBinding binding) {
 				return binding == null || isVisible(binding.modifiers, binding.fPackage);
 			}
-			
+
 			private boolean isVisible(TypeBinding binding) {
 				if (binding instanceof ArrayBinding)
 					return isVisible(((ArrayBinding)binding).leafComponentType);
@@ -583,13 +586,13 @@ public class FormalSpecification {
 					return false;
 				return isVisible(binding.modifiers, binding.declaringClass.fPackage);
 			}
-			
+
 			private void checkTypeReference(ASTNode node, TypeBinding binding) {
 				if (binding != null)
 					if (!isVisible(binding))
 						thisScope.problemReporter().notVisibleType(node, binding);
 			}
-			
+
 			private void checkConstructor(ASTNode node, MethodBinding binding) {
 				if (binding != null)
 					if (!isVisible(binding))
@@ -598,7 +601,7 @@ public class FormalSpecification {
 
 			@Override
 			public boolean visit(AllocationExpression allocationExpression, BlockScope scope) {
-				checkConstructor(allocationExpression, allocationExpression.binding);					
+				checkConstructor(allocationExpression, allocationExpression.binding);
 				return true;
 			}
 
@@ -631,7 +634,7 @@ public class FormalSpecification {
 				checkTypeReference(arrayTypeReference, arrayTypeReference.resolvedType);
 				return true;
 			}
-			
+
 			private void checkAssignment(ASTNode node) {
 				thisScope.problemReporter().assignmentInJavadoc(node);
 			}
@@ -653,7 +656,7 @@ public class FormalSpecification {
 				checkAssignment(compoundAssignment);
 				return super.visit(compoundAssignment, scope);
 			}
-			
+
 			private void checkFieldReference(ASTNode node, FieldBinding binding) {
 				if (binding != null && binding.declaringClass != null) // https://github.com/fsc4j/fsc4j/issues/4
 					if (!isVisible(binding.declaringClass) || !isVisible(binding.modifiers, binding.declaringClass.fPackage))
@@ -671,7 +674,7 @@ public class FormalSpecification {
 				checkFieldReference(fieldReference, fieldReference.binding);
 				return super.visit(fieldReference, scope);
 			}
-			
+
 			private void checkMethodReference(long nameSourcePosition, MethodBinding binding) {
 				if (binding != null && binding.declaringClass != null && !(binding instanceof ProblemMethodBinding)) // https://github.com/fsc4j/fsc4j/issues/13
 					if (!isVisible(binding.declaringClass) || !isVisible(binding.modifiers, binding.declaringClass.fPackage))
@@ -729,14 +732,14 @@ public class FormalSpecification {
 				checkConstructor(qualifiedAllocationExpression, qualifiedAllocationExpression.binding);
 				return super.visit(qualifiedAllocationExpression, scope);
 			}
-			
+
 			private void checkBinding(ASTNode node, Binding binding) {
 				if (binding instanceof TypeBinding)
 					checkTypeReference(node, (TypeBinding)binding);
 				if (binding instanceof FieldBinding)
 					checkFieldReference(node, (FieldBinding)binding);
 			}
-			
+
 			private void checkQualifiedNameReference(QualifiedNameReference reference) {
 				checkBinding(reference, reference.binding);
 				if (reference.otherBindings != null)
@@ -803,9 +806,9 @@ public class FormalSpecification {
 				scope.problemReporter().tryInJavadoc(tryStatement);
 				return super.visit(tryStatement, scope);
 			}
-			
+
 		};
-		
+
 		e.traverse(checker, thisScope);
 	}
 
@@ -835,7 +838,7 @@ public class FormalSpecification {
 			TypeBinding constantPoolDeclaringClass = CodeStream.getConstantPoolDeclaringClass(this.method.scope, method, method.declaringClass, false);
 			codeStream.invoke(Opcodes.OPC_invokeinterface, method, constantPoolDeclaringClass);
 		}
-		
+
 	}
 
 	public FlowInfo analyseCode(MethodScope scope, ExceptionHandlingFlowContext methodContext, FlowInfo flowInfo) {
@@ -852,7 +855,7 @@ public class FormalSpecification {
 	public boolean hasEffectClauses() {
 		return this.inspectsExpressions != null || this.mutatesExpressions != null || this.mutatesPropertiesExpressions != null || this.createsExpressions != null;
 	}
-	
+
 	public int mutatesThisSourceLocation() {
 		if (this.mutatesExpressions != null)
 			for (Expression e : this.mutatesExpressions)
@@ -864,7 +867,7 @@ public class FormalSpecification {
 					return e.sourceStart;
 		return -1;
 	}
-	
+
 	public int inspectsThisSourceLocation() {
 		if (this.inspectsExpressions != null)
 			for (Expression e : this.inspectsExpressions)

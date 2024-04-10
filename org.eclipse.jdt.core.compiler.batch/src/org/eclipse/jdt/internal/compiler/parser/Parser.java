@@ -4940,8 +4940,14 @@ private Annotation[] consumeAnnotations(AbstractMethodDeclaration md) {
 					switch (clause.tag) {
 						case INVAR: clause.addExpression(this, invariants); break;
 						case PRE: clause.addExpression(this, preconditions); break;
-						case THROWS: clause.addExpression(this, throwsConditions); throwsExceptionTypeNames.add(clause.tagArgument); break;
-						case MAY_THROW: clause.addExpression(this, mayThrowConditions); mayThrowExceptionTypeNames.add(clause.tagArgument); break;
+						case THROWS:
+							if (clause.tagArgument == null)
+								problemReporter().throwsClauseMustSpecifyExceptionType(clause.tagStart, clause.tagEnd);
+							clause.addExpression(this, throwsConditions); throwsExceptionTypeNames.add(clause.tagArgument); break;
+						case MAY_THROW:
+							if (clause.tagArgument == null)
+    							problemReporter().mayThrowClauseMustSpecifyExceptionType(clause.tagStart, clause.tagEnd);
+							clause.addExpression(this, mayThrowConditions); mayThrowExceptionTypeNames.add(clause.tagArgument); break;
 						case POST: clause.addExpression(this, postconditions); break;
 						case INSPECTS:
 							if (inspectsExpressions == null)
@@ -4990,7 +4996,7 @@ private Annotation[] consumeAnnotations(AbstractMethodDeclaration md) {
 				}
 				if (!postconditions.isEmpty())
 					md.formalSpecification.postconditions = postconditions.toArray(new Expression[postconditions.size()]);
-				
+
 				if (inspectsExpressions != null)
 					md.formalSpecification.inspectsExpressions = inspectsExpressions.toArray(new Expression[inspectsExpressions.size()]);
 				if (mutatesExpressions != null)
@@ -7095,7 +7101,7 @@ protected void consumeRule(int act) {
 			break;
 
     case 376 : if (DEBUG) { System.out.println("PatternList ::= PatternList COMMA Pattern"); }  //$NON-NLS-1$
-		    consumePatternList(); 
+		    consumePatternList();
 			break;
 
     case 378 : if (DEBUG) { System.out.println("PushLeftBrace ::="); }  //$NON-NLS-1$
