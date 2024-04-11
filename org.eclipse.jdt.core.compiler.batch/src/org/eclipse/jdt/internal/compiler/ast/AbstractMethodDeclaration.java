@@ -455,6 +455,10 @@ public abstract class AbstractMethodDeclaration
 					mutatesThisSourceLocation = this.formalSpecification.mutatesThisSourceLocation();
 				if (mutatesThisSourceLocation != -1) {
 					int pc = codeStream.position;
+					codeStream.aload_0();
+					codeStream.fieldAccess(Opcodes.OPC_getfield, enclosingClass.invariantsCheckingStateField, enclosingClass.binding);
+					codeStream.store(this.oldInvariantsCheckingStateVariable, false);
+					codeStream.addVariable(this.oldInvariantsCheckingStateVariable);
 					if (classRepresentationInvariantsMethod != null) {
 						codeStream.aload_0();
 						codeStream.invoke(Opcodes.OPC_invokespecial, classRepresentationInvariantsMethod.binding, classRepresentationInvariantsMethod.binding.declaringClass);
@@ -472,9 +476,9 @@ public abstract class AbstractMethodDeclaration
 		if (this.formalSpecification != null)
 			this.formalSpecification.generatePostconditionCheck(codeStream);
 		if (invariantChecksInserted) {
-			// TODO: Do this only if the object is not @immutable?
 			codeStream.aload_0();
-			codeStream.iconst_0();
+			codeStream.load(this.oldInvariantsCheckingStateVariable);
+			codeStream.removeVariable(this.oldInvariantsCheckingStateVariable);
 			codeStream.fieldAccess(Opcodes.OPC_putfield, enclosingClass.invariantsCheckingStateField, enclosingClass.binding);
 		}
 	}

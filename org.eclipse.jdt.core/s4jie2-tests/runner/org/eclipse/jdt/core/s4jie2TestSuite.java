@@ -249,6 +249,7 @@ public class s4jie2TestSuite {
 
 		testCompile("Minimal", true, "", "");
 
+		testCompileAndRun(true, "issue22", true, "", "");
 		testCompile("issue30", false, "",
 				"----------\n"
 				+ "1. ERROR in SOURCE_FILE_FULL_PATH (at line 6)\n"
