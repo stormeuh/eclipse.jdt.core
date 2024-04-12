@@ -110,6 +110,22 @@ public CompilationUnitDeclaration(ProblemReporter problemReporter, CompilationRe
 	this.sourceEnd = sourceLength - 1;
 }
 
+private static final char[] nofsc4jChars = {'n', 'o', 'f', 's', 'c', '4', 'j'};
+
+public boolean getFsc4jIsEnabled() {
+	if (this.currentPackage != null) {
+		if (this.currentPackage.tokens != null) {
+			for (char[] token : this.currentPackage.tokens) {
+				int n = token.length - 7;
+				for (int i = 0; i <= n; i++)
+					if (Arrays.equals(token, i, i + 7, nofsc4jChars, 0, 7))
+						return false;
+			}
+		}
+	}
+	return true;
+}
+
 /*
  *	We cause the compilation task to abort to a given extent.
  */

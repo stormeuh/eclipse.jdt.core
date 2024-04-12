@@ -108,6 +108,7 @@ public class Scanner implements TerminalTokens {
 	private int endOfLastJavadocComment = 0;
 
 	public static class JavadocCommentsInfo {
+		boolean fsc4jEnabled;
 		int sourceLength;
 		int sourceHash;
 		int[] javadocCommentStops;
@@ -2370,6 +2371,7 @@ protected int scanForTextBlock() throws InvalidInputException {
 		throw unterminatedTextBlock();
 	}
 }
+public boolean fsc4jEnabled = true;
 public int javadocFormalPartTagStart;
 public int javadocFormalPartTagEnd;
 public FormalSpecificationClause.Tag javadocFormalPartTag;
@@ -2401,6 +2403,8 @@ lineLoop:
 					break;
 				case '@':
 				{
+					if (!this.fsc4jEnabled)
+						break indentationLoop;
 					this.javadocFormalPartTagStart = this.currentPosition;
 					this.currentPosition++;
 					// Check if this the start of a new block tag
@@ -4607,6 +4611,7 @@ public final void setSource(char[] sourceString){
 	this.insideModuleInfo = false;
 	this.javadocCommentPtr = -1;
 	this.endOfLastJavadocComment = 0;
+	this.fsc4jEnabled = true;
 
 }
 /*
@@ -4634,6 +4639,7 @@ public final void setSource(CompilationResult compilationResult) {
 	setSource(null, compilationResult);
 }
 public final void setJavadocCommentsInfo(JavadocCommentsInfo info) {
+	this.fsc4jEnabled = info.fsc4jEnabled;
 	this.javadocCommentStops = Arrays.copyOf(info.javadocCommentStops, info.javadocCommentStops.length);
 	this.javadocCommentStarts = Arrays.copyOf(info.javadocCommentStarts, info.javadocCommentStarts.length);
 	this.javadocCommentPtr = this.javadocCommentStops.length - 1;
@@ -4641,6 +4647,7 @@ public final void setJavadocCommentsInfo(JavadocCommentsInfo info) {
 }
 public final JavadocCommentsInfo getJavadocCommentsInfo() {
 	JavadocCommentsInfo info = new JavadocCommentsInfo();
+	info.fsc4jEnabled = this.fsc4jEnabled;
 	info.javadocCommentStarts = Arrays.copyOf(this.javadocCommentStarts, this.javadocCommentPtr + 1);
 	info.javadocCommentStops = Arrays.copyOf(this.javadocCommentStops, this.javadocCommentPtr + 1);
 	info.sourceLength = this.source.length;

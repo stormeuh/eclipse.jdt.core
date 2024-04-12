@@ -5939,6 +5939,7 @@ protected void consumePackageDeclarationName() {
 
 	impt = new ImportReference(tokens, positions, false, ClassFileConstants.AccDefault);
 	this.compilationUnit.currentPackage = impt;
+	this.scanner.fsc4jEnabled = this.compilationUnit.getFsc4jIsEnabled();
 
 	if (this.currentToken == TokenNameSEMICOLON){
 		impt.declarationSourceEnd = this.scanner.currentPosition - 1;
@@ -5985,6 +5986,7 @@ protected void consumePackageDeclarationNameWithModifiers() {
 
 	impt = new ImportReference(tokens, positions, false, packageModifiers);
 	this.compilationUnit.currentPackage = impt;
+	this.scanner.fsc4jEnabled = this.compilationUnit.getFsc4jIsEnabled();
 	// consume annotations
 	if ((impt.annotations = consumeAnnotations(null)) != null) {
 		impt.declarationSourceStart = packageModifiersSourceStart;
