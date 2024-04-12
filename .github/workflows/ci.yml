@@ -31,7 +31,12 @@ jobs:
         maven-version: 3.9.3
     - name: Define build qualifier
       run: |
-        export BUILD_QUALIFIER="`git describe`"
+        if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+          export BUILD_QUALIFIER="$GITHUB_REF_NAME"
+        else
+          export BUILD_QUALIFIER="`git describe`"
+        fi
+        echo "Setting BUILD_QUALIFIER=$BUILD_QUALIFIER"
         echo "BUILD_QUALIFIER=$BUILD_QUALIFIER" >> "$GITHUB_ENV"
     - name: Build org.eclipse.jdt.core.compiler.batch with Maven 🏗️
       run: |
