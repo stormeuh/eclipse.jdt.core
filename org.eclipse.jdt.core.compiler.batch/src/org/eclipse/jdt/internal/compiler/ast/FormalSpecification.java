@@ -692,7 +692,7 @@ public class FormalSpecification {
 
 			@Override
 			public boolean visit(MessageSend messageSend, BlockScope scope) {
-				if (!allowThisReferences && messageSend.receiverIsImplicitThis())
+				if (!allowThisReferences && messageSend.receiverIsImplicitThis() && messageSend.binding != null && !messageSend.binding.isStatic() && (messageSend.bits & ASTNode.DepthMASK) == 0)
 					scope.problemReporter().cannotReferenceObjectBeforeConstructorRuns(messageSend);
 				checkMethodReference(messageSend.nameSourcePosition, messageSend.binding);
 				return super.visit(messageSend, scope);

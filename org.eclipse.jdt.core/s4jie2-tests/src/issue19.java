@@ -18,6 +18,7 @@ class Foo extends Bar {
 	
 	static int s;
 	static Quux sq;
+	static int getS() { return s; }
 	
     int x;
 	Quux z;
@@ -35,6 +36,7 @@ class Foo extends Bar {
      * @pre | z.getA() > 0
      * @pre | s > 0 // This is OK
      * @pre | sq.a > 0 // This is OK
+     * @pre | getS() > 0 // This is OK
      * 
      * @throws IllegalArgumentException | this.x > 0
      * @may_throw IllegalArgumentException | this.x > 0
@@ -52,6 +54,7 @@ class Foo extends Bar {
      * @post | old(z.getA()) > 0
      * @post | old(s > 0) // This is OK
      * @post | old(sq.a > 0) // This is OK
+     * @post | old(getS()) > 0 // This is OK
      */
     Foo() {}
     
