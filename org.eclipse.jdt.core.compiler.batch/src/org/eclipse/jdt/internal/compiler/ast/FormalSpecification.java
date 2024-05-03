@@ -694,7 +694,8 @@ public class FormalSpecification {
 			public boolean visit(MessageSend messageSend, BlockScope scope) {
 				if (!allowThisReferences && messageSend.receiverIsImplicitThis() && messageSend.binding != null && !messageSend.binding.isStatic() && (messageSend.bits & ASTNode.DepthMASK) == 0)
 					scope.problemReporter().cannotReferenceObjectBeforeConstructorRuns(messageSend);
-				checkMethodReference(messageSend.nameSourcePosition, messageSend.binding);
+				if (!(messageSend.actualReceiverType instanceof ArrayBinding)) // https://github.com/fsc4j/fsc4j/issues/44
+					checkMethodReference(messageSend.nameSourcePosition, messageSend.binding);
 				return super.visit(messageSend, scope);
 			}
 

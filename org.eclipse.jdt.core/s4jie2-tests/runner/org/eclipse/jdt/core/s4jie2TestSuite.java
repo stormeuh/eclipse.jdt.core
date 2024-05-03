@@ -249,6 +249,8 @@ public class s4jie2TestSuite {
 
 		testCompile("Minimal", true, "", "");
 
+		testCompile("array_clone_minimal", true, "", "");
+		testCompile("array_clone", true, "", "");
 		testCompile("issue41", true, "", "");
 		testCompileAndRun(true, "issue22", true, "", "");
 		testCompile("issue30", false, "",
