@@ -34,28 +34,17 @@ import java.util.Locale;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import javax.lang.model.SourceVersion;
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticListener;
-import javax.tools.FileObject;
-import javax.tools.ForwardingJavaFileManager;
-import javax.tools.JavaCompiler;
+import javax.tools.*;
 import javax.tools.JavaCompiler.CompilationTask;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.StandardLocation;
-import javax.tools.ToolProvider;
-
+import junit.framework.TestCase;
 import org.eclipse.jdt.compiler.tool.tests.AbstractCompilerToolTest.CompilerInvocationDiagnosticListener;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileReader;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFormatException;
+import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
-
-import junit.framework.TestCase;
 
 public class CompilerToolTests extends TestCase {
 	private static final boolean DEBUG = false;
@@ -85,20 +74,9 @@ public class CompilerToolTests extends TestCase {
 		"-classNames"
 	};
 	static final String[] ZERO_ARG_OPTIONS = {
-		"-1.3",
-		"-1.4",
-		"-1.5",
-		"-1.6",
-		"-1.7",
 		"-1.8",
 		"-8",
 		"-8.0",
-		"-7",
-		"-7.0",
-		"-6",
-		"-6.0",
-		"-5",
-		"-5.0",
 		"-deprecation",
 		"-nowarn",
 		"-warn:none",
@@ -212,7 +190,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		// System compiler
 		StandardJavaFileManager manager = systemCompiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-		ForwardingJavaFileManager<JavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<JavaFileManager>(manager) {
+		ForwardingJavaFileManager<JavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<>(manager) {
 			@Override
 			public FileObject getFileForInput(Location location, String packageName, String relativeName)
 					throws IOException {
@@ -246,13 +224,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 		};
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
  		CompilationTask task = systemCompiler.getTask(printWriter, forwardingJavaFileManager, null, options, null, units);
@@ -301,7 +279,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		}
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-		ForwardingJavaFileManager<JavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<JavaFileManager>(manager) {
+		ForwardingJavaFileManager<JavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<>(manager) {
 			@Override
 			public FileObject getFileForInput(Location location, String packageName, String relativeName)
 					throws IOException {
@@ -356,13 +334,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 		};
 		// create new list containing input file
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 		CompilationTask task = systemCompiler.getTask(printWriter, forwardingJavaFileManager, null, options, null, units);
@@ -408,7 +386,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		// System compiler
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<StandardJavaFileManager>(manager) {
+		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<>(manager) {
 			@Override
 			public FileObject getFileForInput(Location location, String packageName, String relativeName)
 					throws IOException {
@@ -442,13 +420,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 		};
 		// create new list containing input file
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
  		CompilationTask task = compiler.getTask(printWriter, forwardingJavaFileManager, null, options, null, units);
@@ -501,7 +479,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		// System compiler
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<StandardJavaFileManager>(manager) {
+		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<>(manager) {
 			@Override
 			public JavaFileObject getJavaFileForOutput(Location location,
 					String className,
@@ -519,16 +497,16 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 		};
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
-		options.add("-1.5");
+		options.add("-" + CompilerOptions.getFirstSupportedJavaVersion());
  		CompilationTask task = compiler.getTask(printWriter, forwardingJavaFileManager, null, options, null, units);
  		// check the classpath location
  		assertTrue("Has no location CLASS_OUPUT", forwardingJavaFileManager.hasLocation(StandardLocation.CLASS_OUTPUT));
@@ -550,7 +528,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			assertTrue("Should not happen", false);
 		}
 		assertNotNull("No reader", reader);
-		assertEquals("Not a 1.5 .class file", ClassFileConstants.JDK1_5, reader.getVersion());
+		assertEquals("Not a 1.8 .class file", ClassFileConstants.JDK1_8, reader.getVersion());
 
 		stringWriter = new StringWriter();
 		printWriter = new PrintWriter(stringWriter);
@@ -561,7 +539,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		printWriter.flush();
 		printWriter.close();
 		if (!result.booleanValue()) {
-		System.err.println("Compilation failed: " + stringWriter.getBuffer().toString());
+			System.err.println("Compilation failed: " + stringWriter.getBuffer().toString());
 			assertTrue("Compilation failed ", false);
 		}
 		// check that the .class file exist for X
@@ -594,7 +572,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
 		@SuppressWarnings("resource")
-		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<StandardJavaFileManager>(manager) {
+		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<>(manager) {
 			@Override
 			public JavaFileObject getJavaFileForOutput(Location location,
 					String className,
@@ -612,13 +590,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 		};
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
  		CompilationTask task = compiler.getTask(printWriter, manager, null, options, null, units);
@@ -671,14 +649,14 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 		}
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		StandardJavaFileManager manager = systemCompiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 		CompilationTask task = compiler.getTask(null, null, null, options, null, units);
@@ -719,17 +697,17 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		}
 		// System compiler
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 		ByteArrayOutputStream errBuffer = new ByteArrayOutputStream();
 		PrintWriter err = new PrintWriter(errBuffer);
 		CompilerInvocationDiagnosticListener compilerInvocationDiagnosticListener = new CompilerInvocationDiagnosticListener(err);
-		CompilationTask task = compiler.getTask(null, manager, compilerInvocationDiagnosticListener, options, null, units);
+		CompilationTask task = compiler.getTask(ignoreOutput(), manager, compilerInvocationDiagnosticListener, options, null, units);
 		// check the classpath location
 		Boolean result = task.call();
 		err.flush();
@@ -771,11 +749,11 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		}
 		// System compiler
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 		options.add("-sourcepath");
@@ -829,11 +807,11 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		}
 		// System compiler
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 		options.add("-sourcepath");
@@ -848,7 +826,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 				super.report(diagnostic);
 			}
 		};
-		CompilationTask task = compiler.getTask(null, manager, compilerInvocationDiagnosticListener, options, null, units);
+		CompilationTask task = compiler.getTask(ignoreOutput(), manager, compilerInvocationDiagnosticListener, options, null, units);
 		// check the classpath location
 		Boolean result = task.call();
 		err.flush();
@@ -860,6 +838,10 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		}
 		// check that the .class file exist for X
 		assertTrue("delete failed", inputFile.delete());
+	}
+
+	private PrintWriter ignoreOutput() {
+		return new PrintWriter(new StringWriter());
 	}
 
 	public void testCompilerOneModuleWithEclipseCompiler() {
@@ -909,7 +891,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		}
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<StandardJavaFileManager>(manager) {
+		ForwardingJavaFileManager<StandardJavaFileManager> forwardingJavaFileManager = new ForwardingJavaFileManager<>(manager) {
 			@Override
 			public FileObject getFileForInput(Location location, String packageName, String relativeName)
 					throws IOException {
@@ -943,14 +925,14 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 		};
 		// create new list containing input file
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile1);
 		files.add(inputFile2);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder + "/target/classes");
  		CompilationTask task = compiler.getTask(printWriter, forwardingJavaFileManager, null, options, null, units);
@@ -1006,12 +988,12 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		try {
 			StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-			List<File> fins = new ArrayList<File>();
+			List<File> fins = new ArrayList<>();
 			fins.add(dir);
 			JavaFileManager.Location sourceLoc = javax.tools.StandardLocation.SOURCE_PATH;
 			fileManager.setLocation(sourceLoc, fins);
 
-			Set<JavaFileObject.Kind> fileTypes = new HashSet<JavaFileObject.Kind>();
+			Set<JavaFileObject.Kind> fileTypes = new HashSet<>();
 			fileTypes.add(JavaFileObject.Kind.OTHER);
 
 			Iterable<? extends JavaFileObject> compilationUnits = fileManager.list(sourceLoc, "", fileTypes, true);
@@ -1055,13 +1037,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			//JavaCompiler systemCompiler = ToolProvider.getSystemJavaCompiler();
 			StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-			List<File> fins = new ArrayList<File>();
+			List<File> fins = new ArrayList<>();
 			fins.add(dir);
 
 			JavaFileManager.Location sourceLoc = javax.tools.StandardLocation.SOURCE_PATH;
 				fileManager.setLocation(sourceLoc, fins);
 
-			Set<JavaFileObject.Kind> fileTypes = new HashSet<JavaFileObject.Kind>();
+			Set<JavaFileObject.Kind> fileTypes = new HashSet<>();
 			fileTypes.add(JavaFileObject.Kind.SOURCE);
 
 			Iterable<? extends JavaFileObject> compilationUnits = fileManager.list(sourceLoc, "", fileTypes, true);
@@ -1077,7 +1059,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			}
 			assertEquals("Wrong contents", "X.java", String.valueOf(builder));
 
-			List<File> files = new ArrayList<File>();
+			List<File> files = new ArrayList<>();
 			files.add(dir);
 			try {
 				fileManager.getJavaFileObjectsFromFiles(files);
@@ -1140,19 +1122,19 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 			//JavaCompiler systemCompiler = ToolProvider.getSystemJavaCompiler();
 			StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
-			List<File> fins = new ArrayList<File>();
+			List<File> fins = new ArrayList<>();
 			fins.add(dir);
 
 			JavaFileManager.Location sourceLoc = javax.tools.StandardLocation.SOURCE_PATH;
 				fileManager.setLocation(sourceLoc, fins);
 
-			Set<JavaFileObject.Kind> fileTypes = new HashSet<JavaFileObject.Kind>();
+			Set<JavaFileObject.Kind> fileTypes = new HashSet<>();
 			fileTypes.add(JavaFileObject.Kind.SOURCE);
 
 			Iterable<? extends JavaFileObject> compilationUnits = fileManager.list(sourceLoc, "", fileTypes, true);
 
 			Iterator<? extends JavaFileObject> it = compilationUnits.iterator();
-			List<String> names = new ArrayList<String>();
+			List<String> names = new ArrayList<>();
 			while (it.hasNext()) {
 				JavaFileObject next = it.next();
 				String name = next.getName();
@@ -1202,13 +1184,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 
@@ -1254,13 +1236,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 		final List<Diagnostic<JavaFileObject>> errors = new ArrayList<>();
@@ -1306,13 +1288,13 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
 		PrintWriter printWriter = new PrintWriter(stringWriter);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-d");
 		options.add(tmpFolder);
 		options.add("-warn:+unused,boxing");
@@ -1354,7 +1336,7 @@ static final String[] FAKE_ZERO_ARG_OPTIONS = new String[] {
 	public static String convertToIndependantLineDelimiter(String source) {
 		if (source == null) return "";
 	    if (source.indexOf('\n') == -1 && source.indexOf('\r') == -1) return source;
-	    StringBuffer buffer = new StringBuffer();
+	    StringBuilder buffer = new StringBuilder();
 	    for (int i = 0, length = source.length(); i < length; i++) {
 	        char car = source.charAt(i);
 	        if (car == '\r') {

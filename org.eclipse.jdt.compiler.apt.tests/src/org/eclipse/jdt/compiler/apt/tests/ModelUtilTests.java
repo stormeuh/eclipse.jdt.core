@@ -19,11 +19,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.lang.model.SourceVersion;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
-
 import junit.framework.TestCase;
 
 /**
@@ -95,7 +93,7 @@ public class ModelUtilTests extends TestCase
 		File targetFolder = TestUtils.concatPath(BatchTestUtils.getSrcFolderName(), "targets", "model");
 		BatchTestUtils.copyResources("targets/model", targetFolder);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-A" + processorClass);
 		BatchTestUtils.compileTree(compiler, options, targetFolder);
 

@@ -17,7 +17,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -29,11 +28,14 @@ import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.env.IBinaryAnnotation;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
+import org.eclipse.jdt.internal.compiler.env.IElementInfo;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.ExtraCompilerModifiers;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.JavaModelManager.PerProjectInfo;
 import org.eclipse.jdt.internal.core.hierarchy.TypeHierarchy;
+import org.eclipse.jdt.internal.core.util.DeduplicationUtil;
 import org.eclipse.jdt.internal.core.util.MementoTokenizer;
 import org.eclipse.jdt.internal.core.util.Messages;
 import org.eclipse.jdt.internal.core.util.Util;
@@ -51,10 +53,13 @@ public class BinaryType extends BinaryMember implements IType, SuffixConstants {
 	private static final IMethod[] NO_METHODS = new IMethod[0];
 	private static final IType[] NO_TYPES = new IType[0];
 	private static final IInitializer[] NO_INITIALIZERS = new IInitializer[0];
-	public static final JavadocContents EMPTY_JAVADOC = new JavadocContents(null, org.eclipse.jdt.internal.compiler.util.Util.EMPTY_STRING);
+	public static final IJavadocContents EMPTY_JAVADOC = ExternalJavadocSupport.forHtml(null, org.eclipse.jdt.internal.compiler.util.Util.EMPTY_STRING);
 
 protected BinaryType(JavaElement parent, String name) {
 	super(parent, name);
+}
+protected BinaryType(JavaElement parent, String name, int occurrenceCount) {
+	super(parent, name, occurrenceCount);
 }
 /*
  * Remove my cached children from the Java Model
@@ -65,21 +70,15 @@ protected void closing(Object info) throws JavaModelException {
 	cfi.removeBinaryChildren();
 }
 
-/**
- * @see IType#codeComplete(char[], int, int, char[][], char[][], int[], boolean, ICompletionRequestor)
- * @deprecated
- */
 @Override
-public void codeComplete(char[] snippet,int insertion,int position,char[][] localVariableTypeNames,char[][] localVariableNames,int[] localVariableModifiers,boolean isStatic,ICompletionRequestor requestor) throws JavaModelException {
+@Deprecated
+public void codeComplete(char[] snippet,int insertion,int position,char[][] localVariableTypeNames,char[][] localVariableNames,int[] localVariableModifiers,boolean isStatic,org.eclipse.jdt.core.ICompletionRequestor requestor) throws JavaModelException {
 	codeComplete(snippet, insertion, position, localVariableTypeNames, localVariableNames, localVariableModifiers, isStatic, requestor, DefaultWorkingCopyOwner.PRIMARY);
 }
 
-/**
- * @see IType#codeComplete(char[], int, int, char[][], char[][], int[], boolean, ICompletionRequestor, WorkingCopyOwner)
- * @deprecated
- */
 @Override
-public void codeComplete(char[] snippet,int insertion,int position,char[][] localVariableTypeNames,char[][] localVariableNames,int[] localVariableModifiers,boolean isStatic,ICompletionRequestor requestor, WorkingCopyOwner owner) throws JavaModelException {
+@Deprecated
+public void codeComplete(char[] snippet,int insertion,int position,char[][] localVariableTypeNames,char[][] localVariableNames,int[] localVariableModifiers,boolean isStatic,org.eclipse.jdt.core.ICompletionRequestor requestor, WorkingCopyOwner owner) throws JavaModelException {
 	if (requestor == null) {
 		throw new IllegalArgumentException("Completion requestor cannot be null"); //$NON-NLS-1$
 	}
@@ -166,7 +165,12 @@ public IType createType(String contents, IJavaElement sibling, boolean force, IP
 }
 @Override
 public boolean equals(Object o) {
-	if (!(o instanceof BinaryType)) return false;
+	if (o == this) {
+		return true;
+	}
+	if (!(o instanceof BinaryType)) {
+		return false;
+	}
 	return super.equals(o);
 }
 
@@ -181,7 +185,7 @@ public IMethod[] findMethods(IMethod method) {
 }
 @Override
 public IAnnotation[] getAnnotations() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	IBinaryAnnotation[] binaryAnnotations = info.getAnnotations();
 	return getAnnotations(binaryAnnotations, info.getTagBits());
 }
@@ -209,8 +213,8 @@ public IJavaElement[] getChildrenForCategory(String category) throws JavaModelEx
 				IJavaElement child = children[i];
 				String[] cats = (String[]) categories.get(child);
 				if (cats != null) {
-					for (int j = 0, length2 = cats.length; j < length2; j++) {
-						if (cats[j].equals(category)) {
+					for (String cat : cats) {
+						if (cat.equals(category)) {
 							result[index++] = child;
 							break;
 						}
@@ -236,7 +240,7 @@ public IType getDeclaringType() {
 	IClassFile classFile = getClassFile();
 	if (classFile.isOpen()) {
 		try {
-			char[] enclosingTypeName = ((IBinaryType) getElementInfo()).getEnclosingTypeName();
+			char[] enclosingTypeName = getElementInfo().getEnclosingTypeName();
 			if (enclosingTypeName == null) {
 				return null;
 			}
@@ -276,14 +280,14 @@ public IType getDeclaringType() {
 			return
 				new BinaryType(
 					(JavaElement)getPackageFragment().getClassFile(enclosingClassFileName),
-					Util.localTypeName(enclosingName, enclosingName.lastIndexOf('$'), enclosingName.length()));
+					DeduplicationUtil.intern(Util.localTypeName(enclosingName, enclosingName.lastIndexOf('$'), enclosingName.length())));
 		}
 	}
 }
 @Override
-public Object getElementInfo(IProgressMonitor monitor) throws JavaModelException {
+public IElementInfo getElementInfo(IProgressMonitor monitor) throws JavaModelException {
 	JavaModelManager manager = JavaModelManager.getJavaModelManager();
-	Object info = manager.getInfo(this);
+	IElementInfo info = manager.getInfo(this);
 	if (info != null && info != JavaModelCache.NON_EXISTING_JAR_TYPE_INFO) return info;
 	return openWhenClosed(createElementInfo(), false, monitor);
 }
@@ -350,7 +354,7 @@ public IField getRecordComponent(String compName) {
 }
 @Override
 public int getFlags() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return info.getModifiers() & ~ClassFileConstants.AccSuper;
 }
 
@@ -420,7 +424,7 @@ public IJavaElement getHandleFromMemento(String token, MementoTokenizer memento,
 			}
 			String[] parameters = new String[params.size()];
 			params.toArray(parameters);
-			JavaElement method = (JavaElement)getMethod(selector, parameters);
+			JavaElement method = getMethod(selector, parameters);
 			switch (token.charAt(0)) {
 				case JEM_LAMBDA_EXPRESSION:
 				case JEM_TYPE:
@@ -481,7 +485,7 @@ public String getKey(boolean forceOpen) throws JavaModelException {
 }
 
 @Override
-public IMethod getMethod(String selector, String[] parameterTypeSignatures) {
+public BinaryMethod getMethod(String selector, String[] parameterTypeSignatures) {
 	return new BinaryMethod(this, selector, parameterTypeSignatures);
 }
 
@@ -519,7 +523,7 @@ public IPackageFragment getPackageFragment() {
  */
 @Override
 public String getSuperclassTypeSignature() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	char[] genericSignature = info.getGenericSignature();
 	if (genericSignature != null) {
 		int signatureLength = genericSignature.length;
@@ -555,7 +559,7 @@ public String getSuperclassTypeSignature() throws JavaModelException {
 public String getSourceFileName(IBinaryType info) {
 	if (info == null) {
 		try {
-			info = (IBinaryType) getElementInfo();
+			info = getElementInfo();
 		} catch (JavaModelException e) {
 			// default to using the outer most declaring type name
 			IType type = this;
@@ -572,7 +576,7 @@ public String getSourceFileName(IBinaryType info) {
 
 @Override
 public String getSuperclassName() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	char[] superclassName = info.getSuperclassName();
 	if (superclassName == null) {
 		return null;
@@ -582,7 +586,7 @@ public String getSuperclassName() throws JavaModelException {
 
 @Override
 public String[] getSuperInterfaceNames() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	char[][] names= info.getInterfaceNames();
 	int length;
 	if (names == null || (length = names.length) == 0) {
@@ -597,8 +601,8 @@ public String[] getSuperInterfaceNames() throws JavaModelException {
 }
 @Override
 public String[] getPermittedSubtypeNames() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
-	char[][] names= info.getPermittedSubtypeNames();
+	IBinaryType info = getElementInfo();
+	char[][] names= info.getPermittedSubtypesNames();
 	int length;
 	if (names == null || (length = names.length) == 0) {
 		return CharOperation.NO_STRINGS;
@@ -617,7 +621,7 @@ public String[] getPermittedSubtypeNames() throws JavaModelException {
  */
 @Override
 public String[] getSuperInterfaceTypeSignatures() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	char[] genericSignature = info.getGenericSignature();
 	if (genericSignature != null) {
 		ArrayList interfaces = new ArrayList();
@@ -684,7 +688,7 @@ public ITypeParameter[] getTypeParameters() throws JavaModelException {
  */
 @Override
 public String[] getTypeParameterSignatures() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	char[] genericSignature = info.getGenericSignature();
 	if (genericSignature == null)
 		return CharOperation.NO_STRINGS;
@@ -734,13 +738,13 @@ public IType[] getTypes() throws JavaModelException {
 
 @Override
 public boolean isAnonymous() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return info.isAnonymous();
 }
 
 @Override
 public boolean isClass() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return TypeDeclaration.kind(info.getModifiers()) == TypeDeclaration.CLASS_DECL;
 
 }
@@ -751,7 +755,7 @@ public boolean isClass() throws JavaModelException {
  */
 @Override
 public boolean isEnum() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return TypeDeclaration.kind(info.getModifiers()) == TypeDeclaration.ENUM_DECL;
 }
 
@@ -761,23 +765,22 @@ public boolean isEnum() throws JavaModelException {
  */
 @Override
 public boolean isRecord() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return TypeDeclaration.kind(info.getModifiers()) == TypeDeclaration.RECORD_DECL;
 }
 /**
  * @see IType#isSealed()
- * @noreference This method is not intended to be referenced by clients as it is a part of Java preview feature.
  */
 @Override
 public boolean isSealed() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
-	char[][] names = info.getPermittedSubtypeNames();
+	IBinaryType info = getElementInfo();
+	char[][] names = info.getPermittedSubtypesNames();
 	return (names != null && names.length > 0);
 }
 
 @Override
 public boolean isInterface() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	switch (TypeDeclaration.kind(info.getModifiers())) {
 		case TypeDeclaration.INTERFACE_DECL:
 		case TypeDeclaration.ANNOTATION_TYPE_DECL: // annotation is interface too
@@ -791,19 +794,19 @@ public boolean isInterface() throws JavaModelException {
  */
 @Override
 public boolean isAnnotation() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return TypeDeclaration.kind(info.getModifiers()) == TypeDeclaration.ANNOTATION_TYPE_DECL;
 }
 
 @Override
 public boolean isLocal() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return info.isLocal();
 }
 
 @Override
 public boolean isMember() throws JavaModelException {
-	IBinaryType info = (IBinaryType) getElementInfo();
+	IBinaryType info = getElementInfo();
 	return info.isMember();
 }
 
@@ -840,19 +843,10 @@ public ITypeHierarchy newSupertypeHierarchy(
 	op.runOperation(monitor);
 	return op.getResult();
 }
-/**
- * @param workingCopies the working copies that take precedence over their original compilation units
- * @param monitor the given progress monitor
- * @return a type hierarchy for this type containing this type and all of its supertypes
- * @exception JavaModelException if this element does not exist or if an
- *		exception occurs while accessing its corresponding resource.
- *
- * @see IType#newSupertypeHierarchy(IWorkingCopy[], IProgressMonitor)
- * @deprecated
- */
+
+@Deprecated
 @Override
-public ITypeHierarchy newSupertypeHierarchy(
-	IWorkingCopy[] workingCopies,
+public ITypeHierarchy newSupertypeHierarchy(org.eclipse.jdt.core.IWorkingCopy[] workingCopies,
 	IProgressMonitor monitor)
 	throws JavaModelException {
 
@@ -938,13 +932,10 @@ public ITypeHierarchy newTypeHierarchy(
 	op.runOperation(monitor);
 	return op.getResult();
 }
-/**
- * @see IType#newTypeHierarchy(IWorkingCopy[], IProgressMonitor)
- * @deprecated
- */
+
+@Deprecated
 @Override
-public ITypeHierarchy newTypeHierarchy(
-	IWorkingCopy[] workingCopies,
+public ITypeHierarchy newTypeHierarchy(org.eclipse.jdt.core.IWorkingCopy[] workingCopies,
 	IProgressMonitor monitor)
 	throws JavaModelException {
 
@@ -970,10 +961,8 @@ public ITypeHierarchy newTypeHierarchy(
 	return op.getResult();
 }
 @Override
-public JavaElement resolved(Binding binding) {
-	SourceRefElement resolvedHandle = new ResolvedBinaryType(this.getParent(), this.name, new String(binding.computeUniqueKey()));
-	resolvedHandle.occurrenceCount = this.occurrenceCount;
-	return resolvedHandle;
+public ResolvedBinaryType resolved(Binding binding) {
+	return new ResolvedBinaryType(this.getParent(), this.name, DeduplicationUtil.toString(binding.computeUniqueKey()), this.getOccurrenceCount());
 }
 /*
  * Returns the source file name as defined in the given info.
@@ -1011,10 +1000,10 @@ public String sourceFileName(IBinaryType info) {
 	}
 }
 /*
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	if (info == null) {
 		toStringName(buffer);
@@ -1041,7 +1030,7 @@ protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean s
 	}
 }
 @Override
-protected void toStringName(StringBuffer buffer) {
+protected void toStringName(StringBuilder buffer) {
 	if (getElementName().length() > 0)
 		super.toStringName(buffer);
 	else
@@ -1049,15 +1038,15 @@ protected void toStringName(StringBuffer buffer) {
 }
 @Override
 public String getAttachedJavadoc(IProgressMonitor monitor) throws JavaModelException {
-	JavadocContents javadocContents = getJavadocContents(monitor);
+	IJavadocContents javadocContents = getJavadocContents(monitor);
 	if (javadocContents == null) return null;
 	return javadocContents.getTypeDoc();
 }
-public JavadocContents getJavadocContents(IProgressMonitor monitor) throws JavaModelException {
+public IJavadocContents getJavadocContents(IProgressMonitor monitor) throws JavaModelException {
 	PerProjectInfo projectInfo = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(getJavaProject().getProject());
-	JavadocContents cachedJavadoc = null;
+	IJavadocContents cachedJavadoc = null;
 	synchronized (projectInfo.javadocCache) {
-		cachedJavadoc = (JavadocContents) projectInfo.javadocCache.get(this);
+		cachedJavadoc = (IJavadocContents) projectInfo.javadocCache.get(this);
 	}
 
 	if (cachedJavadoc != null && cachedJavadoc != EMPTY_JAVADOC) {
@@ -1067,7 +1056,7 @@ public JavadocContents getJavadocContents(IProgressMonitor monitor) throws JavaM
 	if (baseLocation == null) {
 		return null;
 	}
-	StringBuffer pathBuffer = new StringBuffer(baseLocation.toExternalForm());
+	StringBuilder pathBuffer = new StringBuilder(baseLocation.toExternalForm());
 
 	if (!(pathBuffer.charAt(pathBuffer.length() - 1) == '/')) {
 		pathBuffer.append('/');
@@ -1076,7 +1065,7 @@ public JavadocContents getJavadocContents(IProgressMonitor monitor) throws JavaM
 	String typeQualifiedName = null;
 	if (isMember()) {
 		IType currentType = this;
-		StringBuffer typeName = new StringBuffer();
+		StringBuilder typeName = new StringBuilder();
 		while (currentType != null) {
 			typeName.insert(0, currentType.getElementName());
 			currentType = currentType.getDeclaringType();
@@ -1090,10 +1079,10 @@ public JavadocContents getJavadocContents(IProgressMonitor monitor) throws JavaM
 	}
 
 	appendModulePath(pack, pathBuffer);
-	pathBuffer.append(pack.getElementName().replace('.', '/')).append('/').append(typeQualifiedName).append(JavadocConstants.HTML_EXTENSION);
+	pathBuffer.append(pack.getElementName().replace('.', '/')).append('/').append(typeQualifiedName).append(ExternalJavadocSupport.HTML_EXTENSION);
 	if (monitor != null && monitor.isCanceled()) throw new OperationCanceledException();
 	final String contents = getURLContents(baseLocation, String.valueOf(pathBuffer));
-	JavadocContents javadocContents = new JavadocContents(this, contents);
+	IJavadocContents javadocContents = ExternalJavadocSupport.forHtml(this, contents);
 	synchronized (projectInfo.javadocCache) {
 		projectInfo.javadocCache.put(this, javadocContents);
 	}
@@ -1104,7 +1093,7 @@ public boolean isLambda() {
 	return false;
 }
 
-private static void appendModulePath(IPackageFragment pack, StringBuffer buf) {
+private static void appendModulePath(IPackageFragment pack, StringBuilder buf) {
 	IModuleDescription moduleDescription= getModuleDescription(pack);
 	if (moduleDescription != null) {
 		String moduleName= moduleDescription.getElementName();
@@ -1147,5 +1136,13 @@ private static boolean isComplianceJava11OrHigher(IJavaProject javaProject) {
 		return false;
 	}
 	return CompilerOptions.versionToJdkLevel(javaProject.getOption(JavaCore.COMPILER_COMPLIANCE, true)) >= ClassFileConstants.JDK11;
+}
+@Override
+public IBinaryType getElementInfo() throws JavaModelException {
+	return (IBinaryType) super.getElementInfo();
+}
+@Override
+public boolean isImplicitlyDeclared() throws JavaModelException {
+	return (this.getFlags() & ExtraCompilerModifiers.AccImplicitlyDeclared) != 0;
 }
 }

@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
 import org.eclipse.jface.text.IRegion;
 
 /**
@@ -59,7 +58,7 @@ class OriginalImportEntry extends ImportEntry {
 			IRegion declarationAndComments) {
 		super(importName);
 
-		this.comments = Collections.unmodifiableList(new ArrayList<ImportComment>(comments));
+		this.comments = Collections.unmodifiableList(new ArrayList<>(comments));
 		this.precedingLineDelimiters = precedingLeadingDelimiters;
 		this.leadingDelimiter = leadingWhitespace;
 		this.declarationAndComments = declarationAndComments;

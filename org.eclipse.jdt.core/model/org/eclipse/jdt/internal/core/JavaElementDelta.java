@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.jdt.core.IClasspathAttributeDelta;
 import org.eclipse.jdt.core.IJavaElement;
@@ -188,8 +187,8 @@ protected void addAffectedChild(JavaElementDelta child) {
 						return;
 					case CHANGED: // child was changed then changed -> it is changed
 						IJavaElementDelta[] children = child.getAffectedChildren();
-						for (int i = 0; i < children.length; i++) {
-							JavaElementDelta childsChild = (JavaElementDelta) children[i];
+						for (IJavaElementDelta c : children) {
+							JavaElementDelta childsChild = (JavaElementDelta) c;
 							existingChild.addAffectedChild(childsChild);
 						}
 
@@ -331,8 +330,8 @@ protected JavaElementDelta createDeltaTree(IJavaElement element, JavaElementDelt
 			this.movedFromHandle = delta.movedFromHandle;
 		}
 	} else {
-		for (int i = 0, size = ancestors.size(); i < size; i++) {
-			IJavaElement ancestor = (IJavaElement) ancestors.get(i);
+		for (Object a : ancestors) {
+			IJavaElement ancestor = (IJavaElement) a;
 			JavaElementDelta ancestorDelta = new JavaElementDelta(ancestor);
 			ancestorDelta.addAffectedChild(childDelta);
 			childDelta = ancestorDelta;
@@ -445,7 +444,7 @@ protected Integer getChildIndex(Key key) {
 		return null;
 	}
 	if (this.childIndex == null) {
-		this.childIndex = new HashMap<Key, Integer>();
+		this.childIndex = new HashMap<>();
 		for (int i = 0; i < length; i++) {
 			this.childIndex.put(new Key(this.affectedChildren[i].getElement()), i);
 		}
@@ -663,7 +662,7 @@ public void sourceDetached(IJavaElement element) {
  * @see #toString()
  */
 public String toDebugString(int depth) {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	for (int i= 0; i < depth; i++) {
 		buffer.append('\t');
 	}
@@ -671,9 +670,9 @@ public String toDebugString(int depth) {
 	toDebugString(buffer);
 	IJavaElementDelta[] children = getAffectedChildren();
 	if (children != null) {
-		for (int i = 0; i < children.length; ++i) {
+		for (IJavaElementDelta child : children) {
 			buffer.append("\n"); //$NON-NLS-1$
-			buffer.append(((JavaElementDelta) children[i]).toDebugString(depth + 1));
+			buffer.append(((JavaElementDelta) child).toDebugString(depth + 1));
 		}
 	}
 	for (int i = 0; i < this.resourceDeltasCounter; i++) {
@@ -702,9 +701,9 @@ public String toDebugString(int depth) {
 	}
 	IJavaElementDelta[] annotations = getAnnotationDeltas();
 	if (annotations != null) {
-		for (int i = 0; i < annotations.length; ++i) {
+		for (IJavaElementDelta annotation : annotations) {
 			buffer.append("\n"); //$NON-NLS-1$
-			buffer.append(((JavaElementDelta) annotations[i]).toDebugString(depth + 1));
+			buffer.append(((JavaElementDelta) annotation).toDebugString(depth + 1));
 		}
 	}
 	IClasspathAttributeDelta[] attributes = getClasspathAttributeDeltas();
@@ -718,7 +717,7 @@ public String toDebugString(int depth) {
 	return buffer.toString();
 }
 @Override
-protected boolean toDebugString(StringBuffer buffer, int flags) {
+protected boolean toDebugString(StringBuilder buffer, int flags) {
 	boolean prev = super.toDebugString(buffer, flags);
 
 	if ((flags & IJavaElementDelta.F_CHILDREN) != 0) {

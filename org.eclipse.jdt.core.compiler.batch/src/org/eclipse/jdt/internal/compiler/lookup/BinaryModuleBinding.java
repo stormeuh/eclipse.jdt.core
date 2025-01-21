@@ -16,7 +16,6 @@ package org.eclipse.jdt.internal.compiler.lookup;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.stream.Stream;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.env.IBinaryAnnotation;
@@ -25,8 +24,8 @@ import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.env.IModule.IModuleReference;
 import org.eclipse.jdt.internal.compiler.env.IModule.IPackageExport;
 import org.eclipse.jdt.internal.compiler.env.IModule.IService;
-import org.eclipse.jdt.internal.compiler.util.Util;
 import org.eclipse.jdt.internal.compiler.env.IModuleAwareNameEnvironment;
+import org.eclipse.jdt.internal.compiler.util.Util;
 
 public class BinaryModuleBinding extends ModuleBinding {
 
@@ -120,11 +119,11 @@ public class BinaryModuleBinding extends ModuleBinding {
 		this.requiresTransitive = new ModuleBinding[requiresReferences.length];
 		int count = 0;
 		int transitiveCount = 0;
-		for (int i = 0; i < requiresReferences.length; i++) {
-			ModuleBinding requiredModule = this.environment.getModule(requiresReferences[i].name());
+		for (IModuleReference ref : requiresReferences) {
+			ModuleBinding requiredModule = this.environment.getModule(ref.name());
 			if (requiredModule != null) {
 				this.requires[count++] = requiredModule;
-				if (requiresReferences[i].isTransitive())
+				if (ref.isTransitive())
 					this.requiresTransitive[transitiveCount++] = requiredModule;
 			}
 			// TODO(SHMOD): handle null case
@@ -160,7 +159,7 @@ public class BinaryModuleBinding extends ModuleBinding {
 				char[] annotationTypeName = annotations[i].getTypeName();
 				if (annotationTypeName[0] != Util.C_RESOLVED)
 					continue;
-				int typeBit = this.environment.getNullAnnotationBit(BinaryTypeBinding.signature2qualifiedTypeName(annotationTypeName));
+				int typeBit = this.environment.getAnalysisAnnotationBit(BinaryTypeBinding.signature2qualifiedTypeName(annotationTypeName));
 				if (typeBit == TypeIds.BitNonNullByDefaultAnnotation) {
 					// using NonNullByDefault we need to inspect the details of the value() attribute:
 					nullness |= BinaryTypeBinding.getNonNullByDefaultValue(annotations[i], this.environment);
@@ -187,8 +186,7 @@ public class BinaryModuleBinding extends ModuleBinding {
 	private void resolvePackages() {
 		this.exportedPackages = new PlainPackageBinding[this.unresolvedExports.length];
 		int count = 0;
-		for (int i = 0; i < this.unresolvedExports.length; i++) {
-			IPackageExport export = this.unresolvedExports[i];
+		for (IPackageExport export : this.unresolvedExports) {
 			// when resolving "exports" in a binary module we simply assume the package must exist,
 			// since this has been checked already when compiling that module.
 			PlainPackageBinding declaredPackage = getOrCreateDeclaredPackage(CharOperation.splitOn('.', export.name()));
@@ -201,8 +199,7 @@ public class BinaryModuleBinding extends ModuleBinding {
 
 		this.openedPackages = new PlainPackageBinding[this.unresolvedOpens.length];
 		count = 0;
-		for (int i = 0; i < this.unresolvedOpens.length; i++) {
-			IPackageExport opens = this.unresolvedOpens[i];
+		for (IPackageExport opens : this.unresolvedOpens) {
 			PlainPackageBinding declaredPackage = getOrCreateDeclaredPackage(CharOperation.splitOn('.', opens.name()));
 			this.openedPackages[count++] = declaredPackage;
 			recordOpensRestrictions(declaredPackage, opens.targets());

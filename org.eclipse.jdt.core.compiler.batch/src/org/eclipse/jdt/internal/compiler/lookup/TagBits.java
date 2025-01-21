@@ -53,6 +53,7 @@ public interface TagBits {
 	long PauseHierarchyCheck = ASTNode.Bit20; // type
 	long HasParameterAnnotations = ASTNode.Bit11; // method/constructor
 
+	long SealingTypeHierarchy = ASTNode.Bit20; // type, Bit20 used for PauseHierarchyCheck can be re-purposed as hierarchy check is complete now
 
 	// test bit to see if default abstract methods were computed
 	long KnowsDefaultAbstractMethods = ASTNode.Bit11; // type
@@ -64,6 +65,7 @@ public interface TagBits {
 	long IsEffectivelyFinal = ASTNode.Bit12; // local
 	long MultiCatchParameter = ASTNode.Bit13; // local
 	long IsResource = ASTNode.Bit14; // local
+	long IsPatternBinding = ASTNode.Bit15; // local
 
 	// have implicit null annotations been collected (inherited(?) & default)?
 	long IsNullnessKnown = ASTNode.Bit13; // method
@@ -154,12 +156,12 @@ public interface TagBits {
 	long AnnotationNullable = ASTNode.Bit56L;
 	/** @since 3.8 null annotation for MethodBinding or LocalVariableBinding (argument): */
 	long AnnotationNonNull = ASTNode.Bit57L;
-	/** @since 3.8 null-default annotation for PackageBinding or TypeBinding or MethodBinding: */
-	@Deprecated
-	long AnnotationNonNullByDefault = ASTNode.Bit58L;
-	/** @since 3.8 canceling null-default annotation for PackageBinding or TypeBinding or MethodBinding: */
-	@Deprecated
-	long AnnotationNullUnspecifiedByDefault = ASTNode.Bit59L;
+	/** @since 3.37 Owning annotation for resource leak analysis: */
+	long AnnotationOwning = ASTNode.Bit58L;
+	/** @since 3.37 NotOwning annotation for resource leak analysis */
+	long AnnotationNotOwning = ASTNode.Bit59L;
+	/** @since 3.37 Bit mask for owning  */
+	long AnnotationOwningMASK = AnnotationOwning | AnnotationNotOwning;
 	/** From Java 8 */
 	long AnnotationFunctionalInterface = ASTNode.Bit60L;
 	/** From Java 8 */
@@ -183,8 +185,8 @@ public interface TagBits {
 				| AnnotationPolymorphicSignature
 				| AnnotationNullable
 				| AnnotationNonNull
-				| AnnotationNonNullByDefault
-				| AnnotationNullUnspecifiedByDefault
+				| AnnotationOwning
+				| AnnotationNotOwning
 				| AnnotationRepeatable;
 
 	long AnnotationNullMASK = AnnotationNullable | AnnotationNonNull;

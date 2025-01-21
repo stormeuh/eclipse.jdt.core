@@ -19,7 +19,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ExecutableElement;
@@ -35,7 +34,6 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -85,7 +83,7 @@ public class XMLConverter extends ElementScanner6<Void, Node> implements IXMLNam
 	public static String xmlToCutAndPasteString(Document model, int indent, boolean shift) {
 		String modelAsString = xmlToString(model);
 	    int length = modelAsString.length();
-	    StringBuffer buffer = new StringBuffer(length);
+	    StringBuilder buffer = new StringBuilder(length);
 	    java.util.StringTokenizer tokenizer = new java.util.StringTokenizer(modelAsString, "\n\r", true);
 	    for (int i = 0; i < indent; i++) buffer.append("\t");
 	    if (shift) indent++;
@@ -101,7 +99,7 @@ public class XMLConverter extends ElementScanner6<Void, Node> implements IXMLNam
 	            }
 	            continue;
 	        }
-	        StringBuffer tokenBuffer = new StringBuffer();
+	        StringBuilder tokenBuffer = new StringBuilder();
 	        for (int i = 0; i < token.length(); i++){
 	            char c = token.charAt(i);
 	            switch (c) {

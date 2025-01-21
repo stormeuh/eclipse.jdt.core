@@ -36,9 +36,16 @@ package org.eclipse.jdt.internal.codeassist.complete;
  * The arguments of the allocation expression are all the arguments defined
  * before the cursor.
  */
-
-import org.eclipse.jdt.internal.compiler.ast.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.ast.ASTNode;
+import org.eclipse.jdt.internal.compiler.ast.AllocationExpression;
+import org.eclipse.jdt.internal.compiler.ast.QualifiedAllocationExpression;
+import org.eclipse.jdt.internal.compiler.ast.SingleTypeReference;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.ParameterizedTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 public class CompletionOnQualifiedAllocationExpression extends QualifiedAllocationExpression implements CompletionNode {
 @Override
@@ -94,7 +101,7 @@ public TypeBinding resolveType(BlockScope scope) {
 	throw new CompletionNodeFound(this, this.resolvedType, scope);
 }
 @Override
-public StringBuffer printExpression(int indent, StringBuffer output) {
+public StringBuilder printExpression(int indent, StringBuilder output) {
 	if (this.enclosingInstance == null)
 		output.append("<CompleteOnAllocationExpression:" );  //$NON-NLS-1$
 	else

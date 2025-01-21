@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.FilerException;
 import javax.lang.model.element.Element;
@@ -28,7 +27,6 @@ import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
-
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
@@ -130,7 +128,7 @@ public class IdeFilerImpl implements Filer {
 
 		Set<IFile> parentFiles;
 		if (originatingElements != null && originatingElements.length > 0) {
-			parentFiles = new HashSet<IFile>(originatingElements.length);
+			parentFiles = new HashSet<>(originatingElements.length);
 			for (Element elem : originatingElements) {
 				IFile enclosing = _env.getEnclosingIFile(elem);
 				if (null != enclosing) {
@@ -181,7 +179,7 @@ public class IdeFilerImpl implements Filer {
 //		}
 		Set<IFile> parentFiles = Collections.emptySet();
 		if (originatingElements != null && originatingElements.length > 0) {
-			parentFiles = new HashSet<IFile>(originatingElements.length);
+			parentFiles = new HashSet<>(originatingElements.length);
 			for (Element elem : originatingElements) {
 				IFile enclosing = _env.getEnclosingIFile(elem);
 				if (null != enclosing) {

@@ -32,13 +32,14 @@
 package com.sun.mirror.util;
 
 
-import java.util.ArrayList;
-import java.util.Collection;
+import static com.sun.mirror.declaration.Modifier.PRIVATE;
+import static com.sun.mirror.declaration.Modifier.PROTECTED;
+import static com.sun.mirror.declaration.Modifier.PUBLIC;
 
 import com.sun.mirror.declaration.Declaration;
 import com.sun.mirror.declaration.Modifier;
-
-import static com.sun.mirror.declaration.Modifier.*;
+import java.util.ArrayList;
+import java.util.Collection;
 
 
 /**
@@ -247,7 +248,7 @@ public class DeclarationFilter {
      * @return the declarations matched by this filter
      */
     public <D extends Declaration> Collection<D> filter(Collection<D> decls) {
-	ArrayList<D> res = new ArrayList<D>(decls.size());
+	ArrayList<D> res = new ArrayList<>(decls.size());
 	for (D d : decls) {
 	    if (matches(d)) {
 		res.add(d);
@@ -272,7 +273,7 @@ public class DeclarationFilter {
      */
     public <D extends Declaration> Collection<D>
 	    filter(Collection<? extends Declaration> decls, Class<D> resType) {
-	ArrayList<D> res = new ArrayList<D>(decls.size());
+	ArrayList<D> res = new ArrayList<>(decls.size());
 	for (Declaration d : decls) {
 	    if (resType.isInstance(d) && matches(d)) {
 		res.add(resType.cast(d));

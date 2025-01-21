@@ -14,10 +14,10 @@
 package org.eclipse.jdt.internal.core.search.matching;
 
 import java.io.IOException;
-
-import org.eclipse.jdt.core.compiler.*;
-import org.eclipse.jdt.core.search.*;
-import org.eclipse.jdt.internal.core.index.*;
+import org.eclipse.jdt.core.compiler.CharOperation;
+import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.internal.core.index.EntryResult;
+import org.eclipse.jdt.internal.core.index.Index;
 
 public class SuperTypeReferencePattern extends JavaSearchPattern {
 
@@ -280,7 +280,7 @@ public EntryResult[] queryIn(Index index) throws IOException {
 	return index.query(getIndexCategories(), key, matchRule); // match rule is irrelevant when the key is null
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	switch (this.superRefKind) {
 		case ALL_SUPER_TYPES:
 			output.append("SuperTypeReferencePattern: <"); //$NON-NLS-1$

@@ -129,7 +129,7 @@ public class FormalSpecification {
 		this.method = method;
 	}
 
-	public void print(int tab, StringBuffer output) {
+	public void print(int tab, StringBuilder output) {
 		if (this.invariants != null) {
 			for (int i = 0; i < this.invariants.length; i++) {
 				output.append("/** @invar | "); //$NON-NLS-1$

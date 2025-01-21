@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.compiler.env;
 
 import java.util.function.Predicate;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.lookup.ModuleBinding;
 import org.eclipse.jdt.internal.compiler.util.SimpleSetOfCharArray;
@@ -24,7 +23,7 @@ import org.eclipse.jdt.internal.compiler.util.SimpleSetOfCharArray;
  */
 public interface IModuleAwareNameEnvironment extends INameEnvironment {
 
-	/** Strategies for searching types & packages in classpath locations & modules. */
+	/** Strategies for searching types and packages in classpath locations and modules. */
 	enum LookupStrategy {
 		/** Search a specific named module only. */
 		Named {

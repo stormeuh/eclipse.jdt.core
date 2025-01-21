@@ -28,50 +28,7 @@ package org.eclipse.jdt.internal.codeassist.select;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.codeassist.impl.AssistParser;
 import org.eclipse.jdt.internal.compiler.CompilationResult;
-import org.eclipse.jdt.internal.compiler.ast.AND_AND_Expression;
-import org.eclipse.jdt.internal.compiler.ast.ASTNode;
-import org.eclipse.jdt.internal.compiler.ast.AbstractVariableDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.AllocationExpression;
-import org.eclipse.jdt.internal.compiler.ast.Annotation;
-import org.eclipse.jdt.internal.compiler.ast.Argument;
-import org.eclipse.jdt.internal.compiler.ast.ArrayAllocationExpression;
-import org.eclipse.jdt.internal.compiler.ast.Block;
-import org.eclipse.jdt.internal.compiler.ast.CaseStatement;
-import org.eclipse.jdt.internal.compiler.ast.CastExpression;
-import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.EmptyStatement;
-import org.eclipse.jdt.internal.compiler.ast.ExplicitConstructorCall;
-import org.eclipse.jdt.internal.compiler.ast.Expression;
-import org.eclipse.jdt.internal.compiler.ast.FieldReference;
-import org.eclipse.jdt.internal.compiler.ast.ForeachStatement;
-import org.eclipse.jdt.internal.compiler.ast.GuardedPattern;
-import org.eclipse.jdt.internal.compiler.ast.IfStatement;
-import org.eclipse.jdt.internal.compiler.ast.ImportReference;
-import org.eclipse.jdt.internal.compiler.ast.LambdaExpression;
-import org.eclipse.jdt.internal.compiler.ast.LocalDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.MarkerAnnotation;
-import org.eclipse.jdt.internal.compiler.ast.MemberValuePair;
-import org.eclipse.jdt.internal.compiler.ast.MessageSend;
-import org.eclipse.jdt.internal.compiler.ast.ModuleDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ModuleReference;
-import org.eclipse.jdt.internal.compiler.ast.NameReference;
-import org.eclipse.jdt.internal.compiler.ast.NormalAnnotation;
-import org.eclipse.jdt.internal.compiler.ast.OR_OR_Expression;
-import org.eclipse.jdt.internal.compiler.ast.Pattern;
-import org.eclipse.jdt.internal.compiler.ast.QualifiedAllocationExpression;
-import org.eclipse.jdt.internal.compiler.ast.Reference;
-import org.eclipse.jdt.internal.compiler.ast.ReferenceExpression;
-import org.eclipse.jdt.internal.compiler.ast.ReturnStatement;
-import org.eclipse.jdt.internal.compiler.ast.SingleMemberAnnotation;
-import org.eclipse.jdt.internal.compiler.ast.SingleNameReference;
-import org.eclipse.jdt.internal.compiler.ast.Statement;
-import org.eclipse.jdt.internal.compiler.ast.SuperReference;
-import org.eclipse.jdt.internal.compiler.ast.SwitchExpression;
-import org.eclipse.jdt.internal.compiler.ast.SwitchStatement;
-import org.eclipse.jdt.internal.compiler.ast.ThisReference;
-import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.TypeReference;
-import org.eclipse.jdt.internal.compiler.ast.WhileStatement;
+import org.eclipse.jdt.internal.compiler.ast.*;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.env.ICompilationUnit;
 import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
@@ -118,11 +75,13 @@ public class SelectionParser extends AssistParser {
 	 * Rationale: we really need to complete parsing the invocation for resolving to succeed.
 	 */
 	private int selectionNodeFoundLevel = 0;
+	private boolean parsingEmbeddedExpression = false;
 	public ASTNode assistNodeParent; // the parent node of assist node
 
 	/* public fields */
 
 	public int selectionStart, selectionEnd;
+
 	public static final char[] SUPER = "super".toCharArray(); //$NON-NLS-1$
 	public static final char[] THIS = "this".toCharArray(); //$NON-NLS-1$
 
@@ -202,7 +161,7 @@ private void buildMoreCompletionContext(Expression expression) {
 				thenStat = elseStat = null;
 				break;
 			case K_BETWEEN_CASE_AND_COLONORARROW:
-				parentNode = orphan = new CaseStatement((Expression) orphan, orphan.sourceStart, orphan.sourceEnd);
+				parentNode = orphan = new CaseStatement( new Expression [] { (Expression) orphan }, orphan.sourceStart, orphan.sourceEnd);
 				break;
 			case K_INSIDE_WHEN:
 				if (this.astPtr >=0 && this.astStack[this.astPtr] instanceof Pattern && orphan instanceof Expression) {
@@ -259,8 +218,6 @@ private void buildMoreCompletionContext(Expression expression) {
 						switchStatement.expression = this.expressionStack[this.expressionPtr--];
 						switchStatement.statements = statements;
 						parentNode = orphan = switchStatement;
-						if (exprSwitch)
-							collectResultExpressionsYield((SwitchExpression) switchStatement);
 						break;
 				}
 				break;
@@ -901,17 +858,15 @@ protected void consumePostExpressionInWhile() {
 }
 
 @Override
-protected void consumeStatementSwitch() {
-	super.consumeStatementSwitch();
-	popUntilElement(K_INSIDE_STATEMENT_SWITCH);
-	popElement(K_INSIDE_STATEMENT_SWITCH);
-}
-
-@Override
-protected void consumeSwitchExpression() {
-	super.consumeSwitchExpression();
-	popUntilElement(K_INSIDE_EXPRESSION_SWITCH);
-	popElement(K_INSIDE_EXPRESSION_SWITCH);
+protected void consumeSwitchStatementOrExpression(boolean isStmt) {
+	super.consumeSwitchStatementOrExpression(isStmt);
+	if (isStmt) {
+		popUntilElement(K_INSIDE_STATEMENT_SWITCH);
+		popElement(K_INSIDE_STATEMENT_SWITCH);
+	} else {
+		popUntilElement(K_INSIDE_EXPRESSION_SWITCH);
+		popElement(K_INSIDE_EXPRESSION_SWITCH);
+	}
 }
 
 @Override
@@ -1003,10 +958,12 @@ protected void consumeInsideCastExpressionWithQualifiedGenerics() {
 	super.consumeInsideCastExpressionWithQualifiedGenerics();
 	pushOnElementStack(K_CAST_STATEMENT);
 }
+
 @Override
-protected void consumeSwitchLabeledExpression() {
-	super.consumeSwitchLabeledExpression();
-	popElement(K_SWITCH_EXPRESSION_DELIMITTER);
+protected void consumeSwitchRule(SwitchRuleKind kind) {
+	super.consumeSwitchRule(kind);
+	if (kind == SwitchRuleKind.EXPRESSION)
+		popElement(K_SWITCH_EXPRESSION_DELIMITTER);
 }
 
 @Override
@@ -1256,7 +1213,7 @@ protected void consumeMethodInvocationName() {
 				return null;
 			}
 			@Override
-			public StringBuffer printExpression(int indent, StringBuffer output) {
+			public StringBuilder printExpression(int indent, StringBuilder output) {
 				return output;
 			}
 		});
@@ -1308,7 +1265,7 @@ protected void consumeMethodInvocationPrimary() {
 				return null;
 			}
 			@Override
-			public StringBuffer printExpression(int indent, StringBuffer output) {
+			public StringBuilder printExpression(int indent, StringBuilder output) {
 				return output;
 			}
 		});
@@ -1490,6 +1447,7 @@ protected void consumeStaticImportOnDemandDeclarationName() {
 @Override
 protected void consumeToken(int token) {
 	int lastToken = this.previousToken; // before super.consumeToken tramples on it
+	boolean betweenCaseAndColonOrArrow = topKnownElementKind(SELECTION_OR_ASSIST_PARSER) == K_BETWEEN_CASE_AND_COLONORARROW; // before super.consumeToken tramples on it
 	super.consumeToken(token);
 
 	// if in a method or if in a field initializer
@@ -1499,32 +1457,25 @@ protected void consumeToken(int token) {
 				pushOnElementStack(K_BETWEEN_CASE_AND_COLONORARROW, this.expressionPtr);
 				break;
 			case TokenNameCOMMA :
-				switch (topKnownElementKind(SELECTION_OR_ASSIST_PARSER)) {
-					// for multi constant case stmt
-					// case MONDAY, FRIDAY
-					// if there's a comma, ignore the previous expression (constant)
-					// Which doesn't matter for the next constant
-					case K_BETWEEN_CASE_AND_COLONORARROW:
-						this.expressionPtr--;
-						this.expressionLengthStack[this.expressionLengthPtr]--;
+				if (this.scanner.atMultiCaseComma()) {
+					switch (topKnownElementKind(SELECTION_OR_ASSIST_PARSER)) {
+						// for multi constant case stmt
+						// case MONDAY, FRIDAY
+						// if there's a comma, ignore the previous expression (constant)
+						// Which doesn't matter for the next constant
+						case K_BETWEEN_CASE_AND_COLONORARROW:
+							this.expressionPtr--;
+							this.expressionLengthStack[this.expressionLengthPtr]--;
+					}
 				}
 				break;
-			case TokenNameARROW:
-				// TODO: Uncomment the line below
-				//if (this.options.sourceLevel < ClassFileConstants.JDK13) break;
-				// else FALL-THROUGH
+			case TokenNameCaseArrow:
 			case TokenNameCOLON:
 				if(topKnownElementKind(SELECTION_OR_ASSIST_PARSER) == K_BETWEEN_CASE_AND_COLONORARROW) {
 					popElement(K_BETWEEN_CASE_AND_COLONORARROW);
-					if (token == TokenNameARROW)
+					if (token == TokenNameCaseArrow)
 						pushOnElementStack(K_SWITCH_EXPRESSION_DELIMITTER);
 				}
-				break;
-			case TokenNameBeginCaseExpr:
-				if(topKnownElementKind(SELECTION_OR_ASSIST_PARSER) == K_BETWEEN_CASE_AND_COLONORARROW) {
-					popElement(K_BETWEEN_CASE_AND_COLONORARROW);
-				}
-				pushOnElementStack(K_SWITCH_EXPRESSION_DELIMITTER);
 				break;
 			case TokenNamereturn:
 				pushOnElementStack(K_INSIDE_RETURN_STATEMENT, this.bracketDepth);
@@ -1555,6 +1506,10 @@ protected void consumeToken(int token) {
 					pushOnElementStack(K_INSIDE_IF, this.expressionPtr, this.astPtr);
 				} else if (lastToken == TokenNamewhile) {
 					pushOnElementStack(K_INSIDE_WHILE, this.expressionPtr, this.astPtr);
+				} else if (lastToken == TokenNameIdentifier) {
+					if (betweenCaseAndColonOrArrow  && topKnownElementKind(SELECTION_OR_ASSIST_PARSER) == K_SELECTOR) {
+						popElement(K_SELECTOR); // 'case' 'ID(' is *not* the start of an invocation
+					}
 				}
 				break;
 		}
@@ -1864,6 +1819,7 @@ protected MessageSend newMessageSendWithTypeArguments() {
 	this.isOrphanCompletionNode = true;
 	return messageSend;
 }
+
 @Override
 public CompilationUnitDeclaration parse(ICompilationUnit sourceUnit, CompilationResult compilationResult, int start, int end) {
 
@@ -1880,7 +1836,7 @@ public CompilationUnitDeclaration parse(ICompilationUnit sourceUnit, Compilation
 
 @Override
 protected boolean restartRecovery() {
-	if (requireExtendedRecovery() || this.selectionNodeFoundLevel > 0)
+	if (requireExtendedRecovery() || this.selectionNodeFoundLevel > 0 || this.parsingEmbeddedExpression)
 		return false;
 	boolean deferRestartOnLocalType = false;
 	for (int i = 0; i <= this.elementPtr; i++) {
@@ -1889,6 +1845,7 @@ protected boolean restartRecovery() {
 			case K_INSIDE_EXPRESSION_SWITCH:
 			case K_INSIDE_IF:
 			case K_INSIDE_WHILE:
+			case K_INSIDE_FOR_EACH:
 				deferRestartOnLocalType = true;
 				break;
 			case K_TYPE_DELIMITER:

@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.core;
 
 import java.util.ArrayList;
-
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.IAnnotation;
 import org.eclipse.jdt.core.IJavaElement;
@@ -38,6 +37,9 @@ public abstract class BinaryMember extends NamedMember {
  */
 protected BinaryMember(JavaElement parent, String name) {
 	super(parent, name);
+}
+protected BinaryMember(JavaElement parent, String name, int occurrenceCount) {
+	super(parent, name, occurrenceCount);
 }
 /*
  * @see ISourceManipulation

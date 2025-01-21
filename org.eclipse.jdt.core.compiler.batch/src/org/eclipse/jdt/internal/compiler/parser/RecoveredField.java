@@ -18,19 +18,7 @@ package org.eclipse.jdt.internal.compiler.parser;
  */
 import java.util.HashSet;
 import java.util.Set;
-
-import org.eclipse.jdt.internal.compiler.ast.ASTNode;
-import org.eclipse.jdt.internal.compiler.ast.AbstractVariableDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.AllocationExpression;
-import org.eclipse.jdt.internal.compiler.ast.Annotation;
-import org.eclipse.jdt.internal.compiler.ast.ArrayInitializer;
-import org.eclipse.jdt.internal.compiler.ast.ArrayQualifiedTypeReference;
-import org.eclipse.jdt.internal.compiler.ast.ArrayTypeReference;
-import org.eclipse.jdt.internal.compiler.ast.Expression;
-import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.LocalDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.Statement;
-import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.*;
 
 public class RecoveredField extends RecoveredElement {
 
@@ -149,8 +137,8 @@ public void attach(RecoveredAnnotation[] annots, int annotCount, int mods, int m
 			this.annotations = new RecoveredAnnotation[annotCount];
 			this.annotationCount = 0;
 			next : for (int i = 0; i < annotCount; i++) {
-				for (int j = 0; j < existingAnnotations.length; j++) {
-					if (annots[i].annotation == existingAnnotations[j]) continue next;
+				for (Annotation existingAnnotation : existingAnnotations) {
+					if (annots[i].annotation == existingAnnotation) continue next;
 				}
 				this.annotations[this.annotationCount++] = annots[i];
 			}
@@ -181,7 +169,7 @@ public int sourceEnd(){
 }
 @Override
 public String toString(int tab){
-	StringBuffer buffer = new StringBuffer(tabString(tab));
+	StringBuilder buffer = new StringBuilder(tabString(tab));
 	buffer.append("Recovered field:\n"); //$NON-NLS-1$
 	this.fieldDeclaration.print(tab + 1, buffer);
 	if (this.annotations != null) {
@@ -344,7 +332,7 @@ public RecoveredElement updateOnOpeningBrace(int braceStart, int braceEnd){
 }
 @Override
 public void updateParseTree(){
-	updatedFieldDeclaration(0, new HashSet<TypeDeclaration>());
+	updatedFieldDeclaration(0, new HashSet<>());
 }
 /*
  * Update the declarationSourceEnd of the corresponding parse node

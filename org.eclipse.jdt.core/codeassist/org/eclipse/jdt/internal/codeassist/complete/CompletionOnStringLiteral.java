@@ -45,11 +45,6 @@ public class CompletionOnStringLiteral extends StringLiteral implements Completi
 		this.contentEnd = ce;
 	}
 
-	public CompletionOnStringLiteral(int s, int e, int cs, int ce) {
-		super(s,e);
-		this.contentStart = cs;
-		this.contentEnd = ce;
-	}
 	@Override
 	public TypeBinding resolveType(ClassScope scope) {
 		throw new CompletionNodeFound(this, null, scope);
@@ -60,7 +55,7 @@ public class CompletionOnStringLiteral extends StringLiteral implements Completi
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 		output.append("<CompletionOnString:"); //$NON-NLS-1$
 		output = super.printExpression(indent, output);
 		return output.append('>');

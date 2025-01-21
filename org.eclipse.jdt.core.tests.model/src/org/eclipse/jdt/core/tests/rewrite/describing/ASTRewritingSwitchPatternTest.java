@@ -13,36 +13,13 @@
 package org.eclipse.jdt.core.tests.rewrite.describing;
 
 import java.util.List;
-
+import junit.framework.Test;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.Block;
-import org.eclipse.jdt.core.dom.CaseDefaultExpression;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.ExpressionStatement;
-import org.eclipse.jdt.core.dom.GuardedPattern;
-import org.eclipse.jdt.core.dom.InfixExpression;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.NullPattern;
-import org.eclipse.jdt.core.dom.QualifiedName;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
-import org.eclipse.jdt.core.dom.StringLiteral;
-import org.eclipse.jdt.core.dom.SwitchCase;
-import org.eclipse.jdt.core.dom.SwitchExpression;
-import org.eclipse.jdt.core.dom.SwitchStatement;
-import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.eclipse.jdt.core.dom.TypePattern;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
-import org.eclipse.jdt.core.dom.YieldStatement;
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
-
-import junit.framework.Test;
 
 @SuppressWarnings({"rawtypes", "deprecation"})
 public class ASTRewritingSwitchPatternTest extends ASTRewritingTest {
@@ -63,7 +40,6 @@ public class ASTRewritingSwitchPatternTest extends ASTRewritingTest {
 			this.project1.setOption(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_21);
 			this.project1.setOption(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_21);
 			this.project1.setOption(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_21);
-			this.project1.setOption(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES, JavaCore.ENABLED);
 		}
 	}
 
@@ -1077,5 +1053,63 @@ public class ASTRewritingSwitchPatternTest extends ASTRewritingTest {
 		assertEqualString(preview, buf.toString());
 	}
 
+	public void testNPEinASTRewriteFlattener() throws Exception {
+        if (checkAPILevel()) {
+            return;
+        }
+        IPackageFragment pack1= this.sourceFolder.createPackageFragment("test1", false, null);
+        StringBuilder buf= new StringBuilder();
+        buf.append("public class X {\n");
+        buf.append(     "void foo(Object o) {\n");
+        buf.append(     "   switch (o) {\n");
+        buf.append(     "       case Integer i when i > 10:\n");
+        buf.append(     "            System.out.println(\"Greater than 10\");\n");
+        buf.append(     "       default         : System.out.println(\"0\");\n");
+        buf.append(     "   }\n");
+        buf.append(     "}\n");
+        buf.append(     "\n");
+        buf.append(     "}\n");
+
+        ICompilationUnit cu= pack1.createCompilationUnit("X.java", buf.toString(), false, null);
+
+        CompilationUnit astRoot= createAST(this.apiLevel, cu);
+        ASTRewrite rewrite= ASTRewrite.create(astRoot.getAST());
+
+        AST ast= astRoot.getAST();
+
+        assertTrue("Parse errors", (astRoot.getFlags() & ASTNode.MALFORMED) == 0);
+        TypeDeclaration type= findTypeDeclaration(astRoot, "X");
+        MethodDeclaration methodDecl= findMethodDeclaration(type, "foo");
+        Block block= methodDecl.getBody();
+        List blockStatements= block.statements();
+        assertTrue("Number of statements not 1", blockStatements.size() == 1);
+
+        { // Modify Pattern from the Guarded pattern
+
+            SwitchStatement switchStatement = (SwitchStatement) blockStatements.get(0);
+            List statements= switchStatement.statements();
+            assertTrue("Number of statements not 4", statements.size() == 4);
+            SwitchCase caseStatement= (SwitchCase)statements.get(0);
+            GuardedPattern guardedPattern = ast.newGuardedPattern();
+
+            rewrite.replace((ASTNode) caseStatement.expressions().get(0),guardedPattern, null);
+        }
+
+        String preview= evaluateRewrite(cu, rewrite);
+
+        StringBuilder buf1= new StringBuilder();
+        buf1= new StringBuilder();
+        buf1.append("public class X {\n");
+        buf1.append(        "void foo(Object o) {\n");
+        buf1.append(        "   switch (o) {\n");
+        buf1.append(        "       case null when null:\n");
+        buf1.append(        "            System.out.println(\"Greater than 10\");\n");
+        buf1.append(        "       default         : System.out.println(\"0\");\n");
+        buf1.append(        "   }\n");
+        buf1.append(        "}\n");
+        buf1.append(        "\n");
+        buf1.append(        "}\n");
+        assertEqualString(preview, buf1.toString());
+    }
 
 }

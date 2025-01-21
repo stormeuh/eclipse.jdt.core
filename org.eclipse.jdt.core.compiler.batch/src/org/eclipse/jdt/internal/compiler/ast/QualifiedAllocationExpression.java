@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2021 IBM Corporation and others.
+ * Copyright (c) 2000, 2024 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -40,7 +40,6 @@ package org.eclipse.jdt.internal.compiler.ast;
 import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.INVOCATION_CONTEXT;
 
 import java.util.Arrays;
-
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
@@ -49,30 +48,7 @@ import org.eclipse.jdt.internal.compiler.flow.FlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.impl.Constant;
-import org.eclipse.jdt.internal.compiler.lookup.AnnotationBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Binding;
-import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
-import org.eclipse.jdt.internal.compiler.lookup.ExtraCompilerModifiers;
-import org.eclipse.jdt.internal.compiler.lookup.ImplicitNullAnnotationVerifier;
-import org.eclipse.jdt.internal.compiler.lookup.IntersectionTypeBinding18;
-import org.eclipse.jdt.internal.compiler.lookup.LocalTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment;
-import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedGenericMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.PolyTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ProblemMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ProblemReasons;
-import org.eclipse.jdt.internal.compiler.lookup.ProblemReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.RawTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Scope;
-import org.eclipse.jdt.internal.compiler.lookup.TagBits;
-import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TypeBindingVisitor;
-import org.eclipse.jdt.internal.compiler.lookup.TypeConstants;
-import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
-import org.eclipse.jdt.internal.compiler.lookup.TypeVariableBinding;
+import org.eclipse.jdt.internal.compiler.lookup.*;
 
 /**
  * Variation on allocation, where can optionally be specified any of:
@@ -126,12 +102,11 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 			boolean analyseResources = currentScope.compilerOptions().analyseResourceLeaks;
 			boolean hasResourceWrapperType = analyseResources
 						&& this.resolvedType instanceof ReferenceBinding
-						&& ((ReferenceBinding)this.resolvedType).hasTypeBit(TypeIds.BitWrapperCloseable);
+						&& this.resolvedType.hasTypeBit(TypeIds.BitWrapperCloseable);
 			for (int i = 0, count = this.arguments.length; i < count; i++) {
 				flowInfo = this.arguments[i].analyseCode(currentScope, flowContext, flowInfo);
 				if (analyseResources && !hasResourceWrapperType) { // allocation of wrapped closeables is analyzed specially
-					// if argument is an AutoCloseable insert info that it *may* be closed (by the target method, i.e.)
-					flowInfo = FakedTrackingVariable.markPassedToOutside(currentScope, this.arguments[i], flowInfo, flowContext, false);
+					flowInfo = handleResourcePassedToInvocation(currentScope, this.binding, this.arguments[i], i, flowContext, flowInfo);
 				}
 				this.arguments[i].checkNPEbyUnboxing(currentScope, flowContext, flowInfo);
 			}
@@ -160,7 +135,7 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 
 		// after having analysed exceptions above start tracking newly allocated resource:
 		if (currentScope.compilerOptions().analyseResourceLeaks && FakedTrackingVariable.isAnyCloseable(this.resolvedType)) {
-			FakedTrackingVariable.analyseCloseableAllocation(currentScope, flowInfo, this);
+			FakedTrackingVariable.analyseCloseableAllocation(currentScope, flowInfo, flowContext, this);
 		}
 
 		manageEnclosingInstanceAccessIfNecessary(currentScope, flowInfo);
@@ -200,7 +175,7 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 			codeStream.generateInlinedValue(this.enumConstant.binding.id);
 		}
 		// handling innerclass instance allocation - enclosing instance arguments
-		if (allocatedType.isNestedType()) {
+		if (allocatedType.hasEnclosingInstanceContext()) {
 			codeStream.generateSyntheticEnclosingInstanceValues(
 				currentScope,
 				allocatedType,
@@ -210,7 +185,7 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 		// generate the arguments for constructor
 		generateArguments(this.binding, this.arguments, currentScope, codeStream);
 		// handling innerclass instance allocation - outer local arguments
-		if (allocatedType.isNestedType()) {
+		if (allocatedType.hasEnclosingInstanceContext()) {
 			codeStream.generateSyntheticOuterArgumentValues(
 				currentScope,
 				allocatedType,
@@ -285,7 +260,7 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 		if (this.enclosingInstance != null)
 			this.enclosingInstance.printExpression(0, output).append('.');
 		super.printExpression(0, output);
@@ -313,7 +288,7 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 							this.typeArguments[i].checkNullConstraints(scope, (ParameterizedGenericMethodBinding) this.binding, typeVariables, i);
 					}
 					if (this.resolvedType.isValidBinding()) {
-						this.resolvedType = scope.environment().createAnnotatedType(this.resolvedType, new AnnotationBinding[] {scope.environment().getNonNullAnnotation()});
+						this.resolvedType = scope.environment().createNonNullAnnotatedType(this.resolvedType);
 					}
 				}
 			}
@@ -322,6 +297,7 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 				this.resolvedType = scope.environment().createAnnotatedType(this.resolvedType, this.binding.getTypeAnnotations());
 			}
 		}
+		checkEarlyConstructionContext(scope);
 		return result;
 	}
 
@@ -420,8 +396,8 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 				}
 				if (this.argumentsHaveErrors) {
 					if (this.arguments != null) { // still attempt to resolve arguments
-						for (int i = 0, max = this.arguments.length; i < max; i++) {
-							this.arguments[i].resolveType(scope);
+						for (Expression argument : this.arguments) {
+							argument.resolveType(scope);
 						}
 					}
 					return null;
@@ -587,11 +563,12 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 			scope.problemReporter().invalidConstructor(this, constructorBinding);
 			return this.resolvedType;
 		}
-		if ((constructorBinding.tagBits & TagBits.HasMissingType) != 0) {
+		if ((constructorBinding.tagBits & TagBits.HasMissingType) != 0 && isMissingTypeRelevant()) {
 			scope.problemReporter().missingTypeInConstructor(this, constructorBinding);
 		}
 		if (this.enclosingInstance != null) {
-			ReferenceBinding targetEnclosing = constructorBinding.declaringClass.enclosingType();
+			ReferenceBinding targetEnclosing =
+					!constructorBinding.declaringClass.isNestedType() || constructorBinding.declaringClass.isStatic() ? null : constructorBinding.declaringClass.enclosingType();
 			if (targetEnclosing == null) {
 				scope.problemReporter().unnecessaryEnclosingInstanceSpecification(this.enclosingInstance, receiver);
 				return this.resolvedType;
@@ -678,8 +655,8 @@ public class QualifiedAllocationExpression extends AllocationExpression {
 			if (this.enclosingInstance != null)
 				this.enclosingInstance.traverse(visitor, scope);
 			if (this.typeArguments != null) {
-				for (int i = 0, typeArgumentsLength = this.typeArguments.length; i < typeArgumentsLength; i++) {
-					this.typeArguments[i].traverse(visitor, scope);
+				for (TypeReference typeArgument : this.typeArguments) {
+					typeArgument.traverse(visitor, scope);
 				}
 			}
 			if (this.type != null) // case of enum constant

@@ -14,12 +14,16 @@
 package org.eclipse.jdt.internal.core.search.matching;
 
 import java.io.IOException;
-
-import org.eclipse.jdt.core.*;
+import org.eclipse.jdt.core.BindingKey;
+import org.eclipse.jdt.core.Flags;
+import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.SearchPattern;
-import org.eclipse.jdt.internal.core.index.*;
+import org.eclipse.jdt.internal.core.index.EntryResult;
+import org.eclipse.jdt.internal.core.index.Index;
 import org.eclipse.jdt.internal.core.util.Util;
 
 public class MethodPattern extends JavaSearchPattern {
@@ -363,7 +367,7 @@ public EntryResult[] queryIn(Index index) throws IOException {
 	return index.query(getIndexCategories(), key, matchRule); // match rule is irrelevant when the key is null
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	if (this.findDeclarations) {
 		output.append(this.findReferences
 			? "MethodCombinedPattern: " //$NON-NLS-1$

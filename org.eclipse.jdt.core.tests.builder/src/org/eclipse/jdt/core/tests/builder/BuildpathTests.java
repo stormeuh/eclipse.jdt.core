@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
-
+import junit.framework.Test;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -34,14 +34,11 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.CategorizedProblem;
-import org.eclipse.jdt.core.tests.util.AbstractCompilerTest;
 import org.eclipse.jdt.core.tests.util.Util;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.core.JavaModel;
 import org.eclipse.jdt.internal.core.JavaModelManager;
 import org.eclipse.jdt.internal.core.JavaProject;
-
-import junit.framework.Test;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class BuildpathTests extends BuilderTests {
@@ -295,7 +292,7 @@ public void testChangeExternalFolder() throws CoreException {
 				"  }\n" +
 				"}"
 			},
-			new HashMap<String, String>(),
+			new HashMap<>(),
 			externalLib
 		);
 
@@ -331,7 +328,7 @@ public void testChangeExternalFolder() throws CoreException {
 				"public class X {\n" +
 				"}"
 			},
-			new HashMap<String, String>(),
+			new HashMap<>(),
 			externalLib
 		);
 		new java.io.File(externalClassFile).setLastModified(lastModified + 1000); // to be sure its different
@@ -368,7 +365,7 @@ public void testChangeZIPArchive1() throws Exception {
 				"}"
 			},
 			externalLib,
-			"1.4");
+			CompilerOptions.getFirstSupportedJavaVersion());
 
 		env.addExternalJars(projectPath, Util.getJavaClassLibs());
 		env.addExternalJars(projectPath, new String[] {externalLib});
@@ -396,7 +393,7 @@ public void testChangeZIPArchive1() throws Exception {
 				"}"
 			},
 			externalLib,
-			"1.4");
+			CompilerOptions.getFirstSupportedJavaVersion());
 
 		IJavaProject p = env.getJavaProject(projectPath);
 		p.getJavaModel().refreshExternalArchives(new IJavaElement[] {p}, null);
@@ -429,7 +426,7 @@ public void testChangeZIPArchive2() throws Exception {
 			"}"
 		},
 		internalLib,
-		"1.4");
+		CompilerOptions.getFirstSupportedJavaVersion());
 	env.getProject(projectPath).refreshLocal(IResource.DEPTH_INFINITE, null);
 	env.addEntry(projectPath, JavaCore.newLibraryEntry(new Path("/Project/internalLib.abc"), null, null));
 
@@ -461,7 +458,7 @@ public void testChangeZIPArchive2() throws Exception {
 			"}"
 		},
 		internalLib,
-		"1.4");
+		CompilerOptions.getFirstSupportedJavaVersion());
 
 	env.getProject(projectPath).refreshLocal(IResource.DEPTH_INFINITE, null);
 
@@ -498,7 +495,7 @@ public void testExternalJarChange() throws JavaModelException, IOException {
 			"public class Y {\n" + //$NON-NLS-1$
 			"}" //$NON-NLS-1$
 		},
-		new HashMap<String, String>(),
+		new HashMap<>(),
 		externalJar
 	);
 	env.addExternalJar(projectPath, externalJar);
@@ -520,7 +517,7 @@ public void testExternalJarChange() throws JavaModelException, IOException {
 			"  }\n" + //$NON-NLS-1$
 			"}" //$NON-NLS-1$
 		},
-		new HashMap<String, String>(),
+		new HashMap<>(),
 		externalJar
 	);
 
@@ -532,7 +529,7 @@ public void testExternalJarChange() throws JavaModelException, IOException {
 	env.removeProject(projectPath);
 }
 
-public void testMissingBuilder() throws JavaModelException {
+public void testMissingBuilder() throws Exception {
 	IPath project1Path = env.addProject("P1"); //$NON-NLS-1$
 	env.addExternalJars(project1Path, Util.getJavaClassLibs());
 
@@ -558,13 +555,9 @@ public void testMissingBuilder() throws JavaModelException {
 
 	env.addRequiredProject(project2Path, project1Path);
 
-	try {
-		JavaProject p = (JavaProject) env.getJavaProject(project1Path);
-		p.deconfigure();
-		JavaModelManager.getJavaModelManager().setLastBuiltState(p.getProject(), null);
-	} catch (CoreException e) {
-		e.printStackTrace();
-	}
+	JavaProject p = (JavaProject) env.getJavaProject(project1Path);
+	p.getProject().getNature(JavaCore.NATURE_ID).deconfigure();
+	JavaModelManager.getJavaModelManager().setLastBuiltState(p.getProject(), null);
 
 	env.addClass(project2Path, "", "SubTest", //$NON-NLS-1$ //$NON-NLS-2$
 		"public class SubTest extends Test {}" //$NON-NLS-1$
@@ -999,11 +992,7 @@ public void testMissingOptionalProject() throws JavaModelException {
 
 // https://bugs.eclipse.org/bugs/show_bug.cgi?id=160132
 public void test0100() throws JavaModelException {
-	if (!AbstractCompilerTest.isJRELevel(AbstractCompilerTest.F_1_5)) {
-		// expected to run only in 1.5 mode on top of a jre 1.5 or above
-		return;
-	}
-	IPath projectPath = env.addProject("P", "1.5");
+	IPath projectPath = env.addProject("P", CompilerOptions.getFirstSupportedJavaVersion());
 	IPath defaultPackagePath = env.addPackage(projectPath, "");
 	env.addExternalJars(projectPath, Util.getJavaClassLibs());
 	env.addClass(defaultPackagePath, "X",

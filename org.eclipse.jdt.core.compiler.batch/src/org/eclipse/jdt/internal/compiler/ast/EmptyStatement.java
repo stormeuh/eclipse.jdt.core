@@ -14,12 +14,12 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.ast;
 
-import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
 import org.eclipse.jdt.internal.compiler.flow.FlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
-import org.eclipse.jdt.internal.compiler.ASTVisitor;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 
 public class EmptyStatement extends Statement {
 
@@ -49,7 +49,7 @@ public class EmptyStatement extends Statement {
 	}
 
 	@Override
-	public StringBuffer printStatement(int tab, StringBuffer output) {
+	public StringBuilder printStatement(int tab, StringBuilder output) {
 		return printIndent(tab, output).append(';');
 	}
 

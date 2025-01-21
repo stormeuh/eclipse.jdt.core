@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Map;
 import java.util.Properties;
-
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.jdt.core.ToolFactory;
@@ -48,7 +47,6 @@ import org.eclipse.text.edits.TextEdit;
  * files first so that a file does not get formatted twice. 2. Use a text based
  * progress monitor for output.</p>
  *
- * @author Ben Konrath <bkonrath@redhat.com>
  * @since 3.2
  * @noinstantiate This class is not intended to be instantiated by clients.
  * @noextend This class is not intended to be subclassed by clients.
@@ -201,8 +199,7 @@ public class CodeFormatterApplication implements IApplication {
 		if (files == null)
 			return;
 
-		for (int i = 0; i < files.length; i++) {
-			File file = files[i];
+		for (File file : files) {
 			if (file.isDirectory()) {
 				formatDirTree(file, codeFormatter);
 			} else if (Util.isJavaLikeFileName(file.getPath())) {
@@ -235,16 +232,9 @@ public class CodeFormatterApplication implements IApplication {
 			}
 
 			// write the file
-			final BufferedWriter out = new BufferedWriter(new FileWriter(file));
-			try {
+			try (BufferedWriter out = new BufferedWriter(new FileWriter(file))) {
 				out.write(doc.get());
 				out.flush();
-			} finally {
-				try {
-					out.close();
-				} catch (IOException e) {
-					/* ignore */
-				}
 			}
 		} catch (IOException e) {
 			String errorMessage = Messages.bind(Messages.CaughtException, "IOException", e.getLocalizedMessage()); //$NON-NLS-1$
@@ -355,10 +345,8 @@ public class CodeFormatterApplication implements IApplication {
 	 * specified configuration file.
 	 */
 	private Properties readConfig(String filename) {
-		BufferedInputStream stream = null;
 		File configFile = new File(filename);
-		try {
-			stream = new BufferedInputStream(new FileInputStream(configFile));
+		try (BufferedInputStream stream = new BufferedInputStream(new FileInputStream(configFile))) {
 			final Properties formatterOptions = new Properties();
 			formatterOptions.load(stream);
 			return formatterOptions;
@@ -381,14 +369,6 @@ public class CodeFormatterApplication implements IApplication {
 			}
 			Util.log(e, errorMessage);
 			System.err.println(errorMessage);
-		} finally {
-			if (stream != null) {
-				try {
-					stream.close();
-				} catch (IOException e) {
-					/* ignore */
-				}
-			}
 		}
 		return null;
 	}
@@ -414,8 +394,7 @@ public class CodeFormatterApplication implements IApplication {
 		final CodeFormatter codeFormatter = ToolFactory.createCodeFormatter(this.options,
 				ToolFactory.M_FORMAT_EXISTING);
 		// format the list of files and/or directories
-		for (int i = 0, max = filesToFormat.length; i < max; i++) {
-			final File file = filesToFormat[i];
+		for (final File file : filesToFormat) {
 			if (file.isDirectory()) {
 				formatDirTree(file, codeFormatter);
 			} else if (Util.isJavaLikeFileName(file.getPath())) {

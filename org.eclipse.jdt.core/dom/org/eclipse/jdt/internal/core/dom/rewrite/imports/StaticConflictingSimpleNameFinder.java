@@ -13,6 +13,8 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core.dom.rewrite.imports;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
@@ -20,9 +22,6 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
-
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Finds conflicts among importable static members declared within the specified on-demand-imported
@@ -44,9 +43,9 @@ final class StaticConflictingSimpleNameFinder implements ConflictingSimpleNameFi
 			Set<String> simpleNames,
 			Set<String> onDemandAndImplicitContainerNames,
 			IProgressMonitor monitor) throws JavaModelException {
-		Set<String> memberNamesFoundInMultipleTypes = new HashSet<String>();
+		Set<String> memberNamesFoundInMultipleTypes = new HashSet<>();
 
-		Set<String> foundMemberNames = new HashSet<String>();
+		Set<String> foundMemberNames = new HashSet<>();
 		for (String containerName : onDemandAndImplicitContainerNames) {
 			IType containingType = this.project.findType(containerName, monitor);
 			if (containingType != null) {
@@ -69,7 +68,7 @@ final class StaticConflictingSimpleNameFinder implements ConflictingSimpleNameFi
 	}
 
 	private Set<String> extractStaticMemberNames(IType type) throws JavaModelException {
-		Set<String> memberNames = new HashSet<String>();
+		Set<String> memberNames = new HashSet<>();
 
 		for (IField field : type.getFields()) {
 			if (isStaticImportableMember(field.getFlags())) {

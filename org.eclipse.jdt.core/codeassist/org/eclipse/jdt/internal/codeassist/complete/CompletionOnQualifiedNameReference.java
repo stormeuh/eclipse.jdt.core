@@ -35,9 +35,17 @@ package org.eclipse.jdt.internal.codeassist.complete;
  * The source range of the completion node denotes the source range
  * which should be replaced by the completion.
  */
-
-import org.eclipse.jdt.internal.compiler.ast.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.ast.QualifiedNameReference;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
+import org.eclipse.jdt.internal.compiler.lookup.MissingTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemFieldBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemReasons;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 public class CompletionOnQualifiedNameReference extends QualifiedNameReference implements CompletionNode {
 	public char[] completionIdentifier;
@@ -48,11 +56,11 @@ public CompletionOnQualifiedNameReference(char[][] previousIdentifiers, char[] c
 	this.isInsideAnnotationAttribute = isInsideAnnotationAttribute;
 }
 @Override
-public StringBuffer printExpression(int indent, StringBuffer output) {
+public StringBuilder printExpression(int indent, StringBuilder output) {
 
 	output.append("<CompleteOnName:"); //$NON-NLS-1$
-	for (int i = 0; i < this.tokens.length; i++) {
-		output.append(this.tokens[i]);
+	for (char[] token : this.tokens) {
+		output.append(token);
 		output.append('.');
 	}
 	output.append(this.completionIdentifier).append('>');
@@ -80,6 +88,12 @@ public TypeBinding resolveType(BlockScope scope) {
 
 	return new CompletionNodeFound(this, this.binding, scope).throwOrDeferAndReturn(() -> {
 		// probably not in the position to do useful resolution, just provide some binding
+		// but perform minimal setup so downstream resolving doesn't throw exceptions:
+		this.constant = Constant.NotAConstant;
+		if ((this.bits & Binding.FIELD) != 0)
+			this.binding = new ProblemFieldBinding(
+					this.binding instanceof ReferenceBinding ? (ReferenceBinding) this.binding : null,
+					this.completionIdentifier, ProblemReasons.NotFound);
 		return this.resolvedType = new ProblemReferenceBinding(this.tokens, null, ProblemReasons.NotFound);
 	});
 }

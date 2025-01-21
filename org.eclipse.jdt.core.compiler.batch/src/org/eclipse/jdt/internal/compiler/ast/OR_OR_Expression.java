@@ -20,10 +20,16 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.impl.*;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.codegen.BranchLabel;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.flow.UnconditionalFlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 //dedicated treatment for the ||
 public class OR_OR_Expression extends BinaryExpression {
@@ -62,8 +68,7 @@ public class OR_OR_Expression extends BinaryExpression {
 		if ((flowContext.tagBits & FlowContext.INSIDE_NEGATION) == 0)
 			flowContext.expireNullCheckedFieldInfo();
 
-		 // need to be careful of scenario:
-		//		(x || y) || !z, if passing the left info to the right, it would be swapped by the !
+		// rightInfo captures the flow (!left then right):
 		FlowInfo rightInfo = leftInfo.initsWhenFalse().unconditionalCopy();
 		this.rightInitStateIndex =
 			currentScope.methodScope().recordInitializationStates(rightInfo);
@@ -81,13 +86,12 @@ public class OR_OR_Expression extends BinaryExpression {
 			flowContext.expireNullCheckedFieldInfo();
 		this.left.checkNPEbyUnboxing(currentScope, flowContext, flowInfo);
 		this.right.checkNPEbyUnboxing(currentScope, flowContext, leftInfo.initsWhenFalse());
-		// The definitely null variables in right info when true should not be missed out while merging
-		// https://bugs.eclipse.org/bugs/show_bug.cgi?id=299900
-		FlowInfo leftInfoWhenTrueForMerging = leftInfo.initsWhenTrue().unconditionalCopy().addPotentialInitializationsFrom(rightInfo.unconditionalInitsWithoutSideEffect());
+		// tweak reach mode to ensure that inits are considered during merge:
+		UnconditionalFlowInfo rightWhenTrueForMerge = rightInfo.safeInitsWhenTrue().setReachMode(previousMode).unconditionalInits();
 		FlowInfo mergedInfo = FlowInfo.conditional(
-					// merging two true initInfos for such a negative case: if ((t && (b = t)) || f) r = b; // b may not have been initialized
-				leftInfoWhenTrueForMerging.unconditionalInits().mergedWith(
-						rightInfo.safeInitsWhenTrue().setReachMode(previousMode).unconditionalInits()),
+					// then = left or (!left then right):
+					leftInfo.initsWhenTrue().mergedWith(rightWhenTrueForMerge),
+					// else = (!left then !right):
 					rightInfo.initsWhenFalse());
 		this.mergedInitStateIndex =
 			currentScope.methodScope().recordInitializationStates(mergedInfo);
@@ -146,6 +150,7 @@ public class OR_OR_Expression extends BinaryExpression {
 			}
 			if (this.rightInitStateIndex != -1) {
 				codeStream.addDefinitelyAssignedVariables(currentScope, this.rightInitStateIndex);
+				codeStream.removeNotDefinitelyAssignedVariables(currentScope, this.rightInitStateIndex);
 			}
 			if (rightIsConst) {
 				this.right.generateCode(currentScope, codeStream, false);
@@ -180,7 +185,6 @@ public class OR_OR_Expression extends BinaryExpression {
 						codeStream.iconst_1();
 					} else {
 						codeStream.goto_(endLabel = new BranchLabel(codeStream));
-						codeStream.decrStackSize(1);
 						trueLabel.place();
 						codeStream.iconst_1();
 						endLabel.place();
@@ -240,6 +244,7 @@ public class OR_OR_Expression extends BinaryExpression {
 					}
 					if (this.rightInitStateIndex != -1) {
 						codeStream.addDefinitelyAssignedVariables(currentScope, this.rightInitStateIndex);
+						codeStream.removeNotDefinitelyAssignedVariables(currentScope, this.rightInitStateIndex);
 					}
 					this.right.generateOptimizedBoolean(currentScope, codeStream, trueLabel, null, valueRequired && !rightIsConst);
 					if (valueRequired && rightIsTrue) {
@@ -258,8 +263,8 @@ public class OR_OR_Expression extends BinaryExpression {
 						break generateOperands; // no need to generate right operand
 					}
 					if (this.rightInitStateIndex != -1) {
-						codeStream
-								.addDefinitelyAssignedVariables(currentScope, this.rightInitStateIndex);
+						codeStream.addDefinitelyAssignedVariables(currentScope, this.rightInitStateIndex);
+						codeStream.removeNotDefinitelyAssignedVariables(currentScope, this.rightInitStateIndex);
 					}
 					this.right.generateOptimizedBoolean(currentScope, codeStream, null, falseLabel, valueRequired && !rightIsConst);
 					int pc = codeStream.position;
@@ -277,35 +282,22 @@ public class OR_OR_Expression extends BinaryExpression {
 			codeStream.removeNotDefinitelyAssignedVariables(currentScope, this.mergedInitStateIndex);
 		}
 	}
+
 	@Override
-	public void collectPatternVariablesToScope(LocalVariableBinding[] variables, BlockScope scope) {
-		LocalVariableBinding[] temp = variables;
-		this.left.collectPatternVariablesToScope(variables, scope);
+	public LocalVariableBinding[] bindingsWhenFalse() {
 
-		// Just keep the ones in false scope
-		variables = this.left.getPatternVariablesWhenFalse();
-		this.addPatternVariablesWhenFalse(variables);
+		LocalVariableBinding [] leftVars =  this.left.bindingsWhenFalse();
+		LocalVariableBinding [] rightVars = this.right.bindingsWhenFalse();
 
-		int length = (variables == null ? 0 : variables.length) + (temp == null ? 0 : temp.length);
-		LocalVariableBinding[] newArray = new LocalVariableBinding[length];
-		if (variables != null) {
-			System.arraycopy(variables, 0, newArray, 0, variables.length);
-		}
-		if (temp != null) {
-			System.arraycopy(temp, 0, newArray, (variables == null ? 0 : variables.length), temp.length);
-		}
-		this.right.collectPatternVariablesToScope(newArray, scope);
-		variables = this.right.getPatternVariablesWhenFalse();
-		this.addPatternVariablesWhenFalse(variables);
+		if (leftVars == NO_VARIABLES)
+			return rightVars;
 
-		// do this at the end, otherwise we will end up with
-		// same variable we just added from left to right
-		variables = this.left.getPatternVariablesWhenTrue();
-		this.right.addPatternVariablesWhenFalse(variables);
+		if (rightVars == NO_VARIABLES)
+			return leftVars;
 
-		variables = this.left.getPatternVariablesWhenFalse();
-		this.right.addPatternVariablesWhenTrue(variables);
+		return LocalVariableBinding.merge(leftVars, rightVars);
 	}
+
 	@Override
 	public boolean isCompactableOperation() {
 		return false;

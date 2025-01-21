@@ -13,30 +13,12 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.tests.model;
 
+import com.ibm.icu.text.Collator;
 import java.util.Comparator;
 import java.util.List;
-
 import org.eclipse.jdt.core.Flags;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.AbstractTypeDeclaration;
-import org.eclipse.jdt.core.dom.AnnotationTypeMemberDeclaration;
-import org.eclipse.jdt.core.dom.ArrayType;
-import org.eclipse.jdt.core.dom.BodyDeclaration;
-import org.eclipse.jdt.core.dom.EnumConstantDeclaration;
-import org.eclipse.jdt.core.dom.FieldDeclaration;
-import org.eclipse.jdt.core.dom.Initializer;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.Name;
-import org.eclipse.jdt.core.dom.PrimitiveType;
-import org.eclipse.jdt.core.dom.QualifiedName;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.SimpleType;
-import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
-import org.eclipse.jdt.core.dom.Type;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.util.CompilationUnitSorter;
-
-import com.ibm.icu.text.Collator;
 
 /**
  * The class <code>DefaultJavaElementComparator</code> is a standard
@@ -257,7 +239,7 @@ class DefaultJavaElementComparator implements Comparator {
 		switch(node.getNodeType()) {
 			case ASTNode.METHOD_DECLARATION :
 				MethodDeclaration methodDeclaration = (MethodDeclaration) node;
-				StringBuffer buffer = new StringBuffer();
+				StringBuilder buffer = new StringBuilder();
 				buffer.append(methodDeclaration.getName().getIdentifier());
 				final List parameters = methodDeclaration.parameters();
 				int length1 = parameters.size();

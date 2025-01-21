@@ -14,7 +14,10 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
+import org.eclipse.jdt.internal.compiler.lookup.ElementValuePair;
 
 /**
  * Normal annotation node
@@ -49,7 +52,7 @@ public class NormalAnnotation extends Annotation {
 		return this.memberValuePairs == null ? NoValuePairs : this.memberValuePairs;
 	}
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 		super.printExpression(indent, output);
 		output.append('(');
 		if (this.memberValuePairs != null) {

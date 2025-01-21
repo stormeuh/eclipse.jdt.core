@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.compiler.tool;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
@@ -24,7 +23,6 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
-
 import javax.tools.FileObject;
 
 /**
@@ -57,7 +55,7 @@ public final class Util {
 				|| unitSource.length == 0)
 				return "No source available"; //$NON-NLS-1$
 
-			StringBuffer errorBuffer = new StringBuffer();
+			StringBuilder errorBuffer = new StringBuilder();
 			errorBuffer.append('\t');
 
 			char c;
@@ -116,26 +114,6 @@ public final class Util {
 				System.err.println(error.getSource(unitSource));
 			}
 		}
-	}
-
-	public static char[] getInputStreamAsCharArray(InputStream stream, int length, String encoding) throws IOException {
-		Charset charset = null;
-		try {
-			charset = Charset.forName(encoding);
-		} catch (IllegalCharsetNameException e) {
-			System.err.println("Illegal charset name : " + encoding); //$NON-NLS-1$
-			return null;
-		} catch(UnsupportedCharsetException e) {
-			System.err.println("Unsupported charset : " + encoding); //$NON-NLS-1$
-			return null;
-		}
-		CharsetDecoder charsetDecoder = charset.newDecoder();
-		charsetDecoder.onMalformedInput(CodingErrorAction.REPLACE).onUnmappableCharacter(CodingErrorAction.REPLACE);
-		byte[] contents = org.eclipse.jdt.internal.compiler.util.Util.getInputStreamAsByteArray(stream);
-		ByteBuffer byteBuffer = ByteBuffer.allocate(contents.length);
-		byteBuffer.put(contents);
-		byteBuffer.flip();
-		return charsetDecoder.decode(byteBuffer).array();
 	}
 
 	public static CharSequence getCharContents(FileObject fileObject, boolean ignoreEncodingErrors, byte[] contents, String encoding) throws IOException {

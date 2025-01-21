@@ -23,7 +23,13 @@ package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
+import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.Scope;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.WildcardBinding;
 
 /**
  * Node to represent Wildcard
@@ -88,7 +94,7 @@ public class Wildcard extends SingleTypeReference {
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output){
+	public StringBuilder printExpression(int indent, StringBuilder output){
 		if (this.annotations != null && this.annotations[0] != null) {
 			printAnnotations(this.annotations[0], output);
 			output.append(' ');

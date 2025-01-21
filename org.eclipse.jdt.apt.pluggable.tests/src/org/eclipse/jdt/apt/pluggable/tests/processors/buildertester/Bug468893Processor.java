@@ -16,7 +16,6 @@ package org.eclipse.jdt.apt.pluggable.tests.processors.buildertester;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -42,8 +41,7 @@ public class Bug468893Processor extends AbstractProcessor {
 			processingEnv.getMessager().printMessage(Kind.WARNING, "Processing over...");
 			try {
 				FileObject resource = processingEnv.getFiler().createSourceFile("generated.TypeIndex");
-				BufferedWriter w = new BufferedWriter(resource.openWriter());
-				try {
+				try (BufferedWriter w = new BufferedWriter(resource.openWriter())) {
 					w.append("package generated;");
 					w.newLine();
 					w.append("public interface TypeIndex {");
@@ -52,8 +50,6 @@ public class Bug468893Processor extends AbstractProcessor {
 					w.newLine();
 					w.append("}");
 					w.newLine();
-				} finally {
-					w.close();
 				}
 			} catch (IOException e) {
 				processingEnv.getMessager().printMessage(Kind.ERROR, "Could not create output " + e.getMessage());

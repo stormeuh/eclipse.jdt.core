@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Set;
-
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -30,7 +29,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
-
 import org.eclipse.jdt.compiler.apt.tests.processors.base.BaseProcessor;
 
 /**
@@ -101,11 +99,9 @@ public class Java8FilerProcessor extends BaseProcessor {
 	private void createPackageBinary() throws IOException {
 		String path = packageName.replace('.', '/');
 		ClassLoader loader = getClass().getClassLoader();
-		InputStream in = loader.getResourceAsStream(path + "/package-info.class");
-		try {
+		try (InputStream in = loader.getResourceAsStream(path + "/package-info.class")) {
 			Filer filer = processingEnv.getFiler();
-			OutputStream out = filer.createClassFile(packageName + ".package-info").openOutputStream();
-			try {
+			try (OutputStream out = filer.createClassFile(packageName + ".package-info").openOutputStream()) {
 				if (in != null && out != null) {
 					int c = in.read();
 					while (c != -1) {
@@ -113,11 +109,7 @@ public class Java8FilerProcessor extends BaseProcessor {
 						c = in.read();
 					}
 				}
-			} finally {
-				out.close();
 			}
-		} finally {
-			in.close();
 		}
 	}
 }

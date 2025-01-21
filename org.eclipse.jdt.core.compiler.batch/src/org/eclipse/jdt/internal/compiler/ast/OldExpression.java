@@ -108,7 +108,7 @@ public class OldExpression extends Expression {
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 		output.append("old("); //$NON-NLS-1$
 		this.expression.printExpression(indent, output);
 		output.append(")"); //$NON-NLS-1$

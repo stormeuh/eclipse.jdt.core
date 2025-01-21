@@ -17,15 +17,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import org.eclipse.jdt.core.tests.compiler.regression.NullAnnotationTests18;
-import org.eclipse.jdt.core.tests.compiler.regression.RecordPatternTest;
-import org.eclipse.jdt.core.tests.compiler.regression.SwitchPatternTest;
-import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
-
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import org.eclipse.jdt.core.tests.compiler.regression.NullAnnotationTests21;
+import org.eclipse.jdt.core.tests.compiler.regression.RecordPatternTest;
+import org.eclipse.jdt.core.tests.compiler.regression.SwitchPatternTest;
+import org.eclipse.jdt.core.tests.dom.ConverterTestSetup;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class RunOnlyJava19Tests extends TestCase {
@@ -36,7 +34,7 @@ public class RunOnlyJava19Tests extends TestCase {
 	public static Class[] getAllTestClasses() {
 		return new Class[] {
 			RecordPatternTest.class,
-			NullAnnotationTests18.class,
+			NullAnnotationTests21.class,
 			SwitchPatternTest.class
 		};
 	}

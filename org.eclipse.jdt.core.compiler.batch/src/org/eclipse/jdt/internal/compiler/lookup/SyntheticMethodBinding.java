@@ -20,11 +20,11 @@
 package org.eclipse.jdt.internal.compiler.lookup;
 
 import java.util.stream.Stream;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.LambdaExpression;
+import org.eclipse.jdt.internal.compiler.ast.RecordComponent;
 import org.eclipse.jdt.internal.compiler.ast.ReferenceExpression;
 import org.eclipse.jdt.internal.compiler.ast.SwitchStatement;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
@@ -158,9 +158,9 @@ public class SyntheticMethodBinding extends MethodBinding {
 		// retrieve sourceStart position for the target field for line number attributes
 		FieldDeclaration[] fieldDecls = declaringSourceType.scope.referenceContext.fields;
 		if (fieldDecls != null) {
-			for (int i = 0, max = fieldDecls.length; i < max; i++) {
-				if (fieldDecls[i].binding == targetField) {
-					this.sourceStart = fieldDecls[i].sourceStart;
+			for (FieldDeclaration fieldDecl : fieldDecls) {
+				if (fieldDecl.binding == targetField) {
+					this.sourceStart = fieldDecl.sourceStart;
 					return;
 				}
 			}
@@ -329,7 +329,7 @@ public class SyntheticMethodBinding extends MethodBinding {
 	public SyntheticMethodBinding(SourceTypeBinding declaringEnum, int startIndex, int endIndex) {
 		this.declaringClass = declaringEnum;
 		this.index = nextSmbIndex();
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append(TypeConstants.SYNTHETIC_ENUM_CONSTANT_INITIALIZATION_METHOD_PREFIX).append(this.index);
 		this.selector = String.valueOf(buffer).toCharArray();
 		this.modifiers = ClassFileConstants.AccPrivate | ClassFileConstants.AccStatic;
@@ -372,7 +372,7 @@ public class SyntheticMethodBinding extends MethodBinding {
 		if (environment.globalOptions.isAnnotationBasedNullAnalysisEnabled) {
 			// mark X[]::new and X[]::clone as returning 'X @NonNull' (don't wait (cf. markNonNull()), because we're called as late as codeGen):
 	    	if (environment.usesNullTypeAnnotations())
-	    		this.returnType = environment.createAnnotatedType(this.returnType, new AnnotationBinding[]{ environment.getNonNullAnnotation() });
+	    		this.returnType = environment.createNonNullAnnotatedType(this.returnType);
 	    	else
 	    		this.tagBits |= TagBits.AnnotationNonNull;
 	    }
@@ -390,10 +390,10 @@ public class SyntheticMethodBinding extends MethodBinding {
 		this.tagBits |= (TagBits.AnnotationResolved | TagBits.DeprecatedAnnotationResolved) | (lambda.binding.tagBits & TagBits.HasParameterAnnotations);
 	    this.returnType = lambda.binding.returnType;
 	    this.parameters = lambda.binding.parameters;
-        if (this.returnType.isNonDenotable() || Stream.of(this.parameters).anyMatch(p -> p.isNonDenotable())) {
+        if (this.returnType.isNonDenotable() || Stream.of(this.parameters).anyMatch(TypeBinding::isNonDenotable)) {
         	this.modifiers &= ~ExtraCompilerModifiers.AccGenericSignature;
         }
-	    TypeVariableBinding[] vars = Stream.of(this.parameters).filter(param -> param.isTypeVariable()).toArray(TypeVariableBinding[]::new);
+	    TypeVariableBinding[] vars = Stream.of(this.parameters).filter(TypeBinding::isTypeVariable).toArray(TypeVariableBinding[]::new);
 	    if (vars != null && vars.length > 0)
 	    	this.typeVariables = vars;
 	    this.thrownExceptions = lambda.binding.thrownExceptions;
@@ -572,9 +572,9 @@ public class SyntheticMethodBinding extends MethodBinding {
 		AbstractMethodDeclaration[] methodDecls =
 			sourceType.scope.referenceContext.methods;
 		if (methodDecls != null) {
-			for (int i = 0, length = methodDecls.length; i < length; i++) {
-				if (methodDecls[i].binding == accessedConstructor) {
-					this.sourceStart = methodDecls[i].sourceStart;
+			for (AbstractMethodDeclaration methodDecl : methodDecls) {
+				if (methodDecl.binding == accessedConstructor) {
+					this.sourceStart = methodDecl.sourceStart;
 					return;
 				}
 			}
@@ -647,9 +647,9 @@ public class SyntheticMethodBinding extends MethodBinding {
 		// retrieve sourceStart position for the target method for line number attributes
 		AbstractMethodDeclaration[] methodDecls = declaringSourceType.scope.referenceContext.methods;
 		if (methodDecls != null) {
-			for (int i = 0, length = methodDecls.length; i < length; i++) {
-				if (methodDecls[i].binding == accessedMethod) {
-					this.sourceStart = methodDecls[i].sourceStart;
+			for (AbstractMethodDeclaration methodDecl : methodDecls) {
+				if (methodDecl.binding == accessedMethod) {
+					this.sourceStart = methodDecl.sourceStart;
 					return;
 				}
 			}
@@ -663,6 +663,13 @@ public class SyntheticMethodBinding extends MethodBinding {
 	@Override
 	public LambdaExpression sourceLambda() {
 		return this.lambda;
+	}
+
+	@Override
+	public RecordComponent sourceRecordComponent() {
+		if (this.recordComponentBinding != null)
+			return this.recordComponentBinding.sourceRecordComponent();
+		return null;
 	}
 
 	@Override
@@ -686,7 +693,7 @@ public class SyntheticMethodBinding extends MethodBinding {
 				if (environment.usesNullTypeAnnotations()) {
 					TypeBinding elementType = ((ArrayBinding)method.returnType).leafComponentType();
 					AnnotationBinding nonNullAnnotation = environment.getNonNullAnnotation();
-					elementType = environment.createAnnotatedType(elementType, new AnnotationBinding[]{ environment.getNonNullAnnotation() });
+					elementType = environment.createNonNullAnnotatedType(elementType);
 					method.returnType = environment.createArrayType(elementType, 1, new AnnotationBinding[]{ nonNullAnnotation, null });
 				} else {
 					method.tagBits |= TagBits.AnnotationNonNull;
@@ -694,7 +701,7 @@ public class SyntheticMethodBinding extends MethodBinding {
 				return;
 			case EnumValueOf:
 				if (environment.usesNullTypeAnnotations()) {
-					method.returnType = environment.createAnnotatedType(method.returnType, new AnnotationBinding[]{ environment.getNonNullAnnotation() });
+					method.returnType = environment.createNonNullAnnotatedType(method.returnType);
 				} else {
 					method.tagBits |= TagBits.AnnotationNonNull;
 				}

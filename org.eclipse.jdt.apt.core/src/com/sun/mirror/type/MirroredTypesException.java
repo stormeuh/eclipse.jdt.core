@@ -32,11 +32,10 @@
 package com.sun.mirror.type;
 
 
+import com.sun.mirror.declaration.Declaration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-
-import com.sun.mirror.declaration.Declaration;
 
 
 /**
@@ -61,7 +60,7 @@ public class MirroredTypesException extends RuntimeException {
     public MirroredTypesException(Collection<TypeMirror> types) {
 	super("Attempt to access Class objects for TypeMirrors " + types); //$NON-NLS-1$
 	this.types = types;
-	names = new ArrayList<String>();
+	names = new ArrayList<>();
 	for (TypeMirror t : types) {
 	    names.add(t.toString());
 	}

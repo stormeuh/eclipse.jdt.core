@@ -25,7 +25,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.zip.ZipInputStream;
-
+import junit.framework.Test;
+import junit.framework.TestSuite;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspace;
@@ -37,9 +38,7 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.tests.builder.BuilderTests;
 import org.eclipse.jdt.core.tests.builder.Problem;
-
-import junit.framework.Test;
-import junit.framework.TestSuite;
+import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 
 public class PerfTests extends BuilderTests
 {
@@ -69,16 +68,13 @@ public class PerfTests extends BuilderTests
 		File tempPath = fetchFromBinariesProject("perf-test-project.zip", 3_307_492);
 		
 		InputStream in = new FileInputStream(tempPath);
-		ZipInputStream zipIn = new ZipInputStream(in);
-		try {
+		
+		try (ZipInputStream zipIn = new ZipInputStream(in)) {
 			TestUtil.unzip(zipIn, destRoot);
-		}
-		finally {
-			zipIn.close();
 		}
 
 		// project will be deleted by super-class's tearDown() method
-		projectPath = env.addProject( "org.eclipse.jdt.core", "1.4" ); //$NON-NLS-1$ //$NON-NLS-2$
+		projectPath = env.addProject( "org.eclipse.jdt.core", CompilerOptions.getFirstSupportedJavaVersion() ); //$NON-NLS-1$ //$NON-NLS-2$
 
 		System.out.println("Performing full build..."); //$NON-NLS-1$
 		fullBuild( projectPath );

@@ -16,7 +16,6 @@ package org.eclipse.jdt.core.tests.model;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.Predicate;
-
 import org.eclipse.jdt.core.CompletionContext;
 import org.eclipse.jdt.core.CompletionProposal;
 import org.eclipse.jdt.core.CompletionRequestor;
@@ -318,7 +317,7 @@ public class CompletionTestsRequestor2 extends CompletionRequestor {
 	 */
 	public String getResultsWithoutSorting() {
 		if(this.proposalsPtr < 0) return "";
-		StringBuffer buffer = printProposal(this.proposals[0]);
+		StringBuilder buffer = printProposal(this.proposals[0]);
 		for(int i = 1; i <=this.proposalsPtr; i++) {
 			if(i > 0) buffer.append('\n');
 			buffer.append(printProposal(this.proposals[i]));
@@ -336,12 +335,12 @@ public class CompletionTestsRequestor2 extends CompletionRequestor {
 		return strings;
 	}
 
-	protected StringBuffer printProposal(CompletionProposal proposal) {
-		StringBuffer buffer = new StringBuffer();
+	protected StringBuilder printProposal(CompletionProposal proposal) {
+		StringBuilder buffer = new StringBuilder();
 		return printProposal(proposal, 0, buffer);
 	}
 
-	protected StringBuffer printProposal(CompletionProposal proposal, int tab, StringBuffer buffer) {
+	protected StringBuilder printProposal(CompletionProposal proposal, int tab, StringBuilder buffer) {
 		for (int i = 0; i < tab; i++) {
 			buffer.append("   "); //$NON-NLS-1$
 		}

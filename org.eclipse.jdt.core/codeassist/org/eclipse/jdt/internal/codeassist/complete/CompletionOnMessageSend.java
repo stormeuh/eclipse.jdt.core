@@ -34,10 +34,10 @@ package org.eclipse.jdt.internal.codeassist.complete;
  * The arguments of the message send are all the arguments defined
  * before the cursor.
  */
-
-import org.eclipse.jdt.internal.compiler.ast.*;
+import org.eclipse.jdt.internal.compiler.ast.MessageSend;
 import org.eclipse.jdt.internal.compiler.impl.Constant;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 public class CompletionOnMessageSend extends MessageSend implements CompletionNode {
 
@@ -68,7 +68,7 @@ public class CompletionOnMessageSend extends MessageSend implements CompletionNo
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 
 		output.append("<CompleteOnMessageSend:"); //$NON-NLS-1$
 		if (!this.receiver.isImplicitThis()) this.receiver.printExpression(0, output).append('.');

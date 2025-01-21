@@ -15,7 +15,7 @@ package org.eclipse.jdt.core.tests.compiler.parser;
 
 import java.util.Locale;
 import java.util.Map;
-
+import junit.framework.Test;
 import org.eclipse.jdt.core.tests.util.Util;
 import org.eclipse.jdt.internal.codeassist.select.SelectionJavadoc;
 import org.eclipse.jdt.internal.codeassist.select.SelectionParser;
@@ -37,8 +37,6 @@ import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
 import org.eclipse.jdt.internal.compiler.problem.DefaultProblemFactory;
 import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
 
-import junit.framework.Test;
-
 /**
  * Class to test selection in Javadoc comments.
  * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=54968"
@@ -48,7 +46,7 @@ public class SelectionJavadocTest extends AbstractSelectionTest {
 
 	String source;
 	ICompilationUnit unit;
-	StringBuffer result;
+	StringBuilder result;
 
 	public SelectionJavadocTest(String testName) {
 		super(testName);
@@ -134,7 +132,7 @@ public class SelectionJavadocTest extends AbstractSelectionTest {
 	void setUnit(String name, String source) {
 		this.source = source;
 		this.unit = new CompilationUnit(source.toCharArray(), name, null);
-		this.result = new StringBuffer();
+		this.result = new StringBuilder();
 	}
 
 	/*
@@ -881,7 +879,7 @@ public class SelectionJavadocTest extends AbstractSelectionTest {
 	}
 
 	/**
-	 * @bug 192449: [javadoc][assist] SelectionJavadocParser should not report problems
+	 * bug 192449: [javadoc][assist] SelectionJavadocParser should not report problems
 	 * @see "https://bugs.eclipse.org/bugs/show_bug.cgi?id=192449"
 	 */
 	public void test26() {

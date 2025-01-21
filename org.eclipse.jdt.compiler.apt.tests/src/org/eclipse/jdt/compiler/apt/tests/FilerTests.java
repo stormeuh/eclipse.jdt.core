@@ -20,10 +20,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
-
 import junit.framework.TestCase;
 
 /**
@@ -63,7 +61,7 @@ public class FilerTests extends TestCase {
 		File inputFile = BatchTestUtils.copyResource("targets/filer/FilerTarget1.java", targetFolder);
 		assertNotNull("No input file", inputFile);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		BatchTestUtils.compileOneClass(compiler, options, inputFile);
 
 		// check that the resource and class files were generated

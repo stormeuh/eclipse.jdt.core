@@ -18,7 +18,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jdt.core.IClasspathAttribute;
@@ -142,7 +141,7 @@ public class ModuleUpdater {
 		}
 		for (IClasspathEntry e1 : expandedClasspath) {
 			if (e1.getEntryKind() == IClasspathEntry.CPE_PROJECT) {
-				Object target = JavaModel.getTarget(e1.getPath(), true);
+				Object target = JavaModel.getTarget(e1, true);
 				if (target instanceof IProject) {
 					IProject prereqProject = (IProject) target;
 					if (JavaProject.hasJavaNature(prereqProject)) {

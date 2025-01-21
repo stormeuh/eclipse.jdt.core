@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.core.search.matching;
 
 import java.io.IOException;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.SearchPattern;
@@ -131,7 +130,7 @@ public class ModulePattern extends JavaSearchPattern {
 		return true;
 	}
 	@Override
-	protected StringBuffer print(StringBuffer output) {
+	protected StringBuilder print(StringBuilder output) {
 		if (this.findDeclarations) {
 			output.append(this.findReferences
 				? "ModuleCombinedPattern: " //$NON-NLS-1$

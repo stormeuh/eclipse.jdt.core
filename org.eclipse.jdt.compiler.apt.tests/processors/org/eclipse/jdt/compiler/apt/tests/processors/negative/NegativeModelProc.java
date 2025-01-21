@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -41,7 +40,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
-
 import org.eclipse.jdt.compiler.apt.tests.processors.base.XMLComparer;
 import org.eclipse.jdt.compiler.apt.tests.processors.base.XMLConverter;
 import org.w3c.dom.Document;
@@ -701,7 +699,7 @@ public class NegativeModelProc extends AbstractProcessor
 
 
 	public boolean checkNegative5() throws Exception {
-		List<TypeElement> rootElements = new ArrayList<TypeElement>();
+		List<TypeElement> rootElements = new ArrayList<>();
 		TypeElement element = _elementUtils.getTypeElement("targets.negative.pa.Negative5");
 		if (null == element) {
 			reportError("Element Negative5 was not found");
@@ -741,7 +739,7 @@ public class NegativeModelProc extends AbstractProcessor
 	public boolean checkNegative7() throws Exception {
 
 		// Get the roots of the Negative7 model
-		List<TypeElement> rootElements = new ArrayList<TypeElement>();
+		List<TypeElement> rootElements = new ArrayList<>();
 		TypeElement element = _elementUtils.getTypeElement("targets.negative.pa.Negative7");
 		if (null == element) {
 			reportError("Element Negative7 was not found");
@@ -764,7 +762,7 @@ public class NegativeModelProc extends AbstractProcessor
 	 */
 	public boolean checkNegative8() throws Exception {
 		// check that all expected elements are here
-		List<TypeElement> rootElements = new ArrayList<TypeElement>();
+		List<TypeElement> rootElements = new ArrayList<>();
 		String[] suffixes = new String[] {"a", "b", "c", "d", "e", "f"};
 		for (int i = 0, l = suffixes.length; i < l; i++) {
 			TypeElement element = _elementUtils.getTypeElement("targets.negative.pa.Negative8" + suffixes[i]);
@@ -789,7 +787,7 @@ public class NegativeModelProc extends AbstractProcessor
 	 */
 	public boolean checkNegative9() throws Exception {
 		// check that all expected elements are here
-		List<TypeElement> rootElements = new ArrayList<TypeElement>();
+		List<TypeElement> rootElements = new ArrayList<>();
 		String[] suffixes = new String[] {"a", "b"};
 		for (int i = 0, l = suffixes.length; i < l; i++) {
 			TypeElement element = _elementUtils.getTypeElement("targets.negative.pa.Negative9" + suffixes[i]);

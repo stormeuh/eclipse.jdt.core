@@ -14,7 +14,6 @@
 package org.eclipse.jdt.compiler.apt.tests.processors.AnnotationProcessorTests;
 
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.RoundEnvironment;
@@ -52,7 +51,7 @@ public class Bug340635Proc extends AbstractProcessor {
 					DeclaredType genericType = element.asType().accept(new GenericTypeVisitor(types), null);
 					DeclaredType erasedType = (DeclaredType) types.erasure(genericType);
 
-					StringBuffer message = new StringBuffer();
+					StringBuilder message = new StringBuilder();
 					message.append("Erased type: " + erasedType);
 					message.append(" - type arguments: ");
 					for (TypeMirror typeArgument : erasedType.getTypeArguments()) {
@@ -67,7 +66,7 @@ public class Bug340635Proc extends AbstractProcessor {
 		return ALLOW_OTHER_PROCESSORS_TO_PROCESS;
 	}
 
-	private class GenericTypeVisitor extends SimpleTypeVisitor6<DeclaredType, Void> {
+	private static class GenericTypeVisitor extends SimpleTypeVisitor6<DeclaredType, Void> {
 		private final Types types;
 		@Deprecated
 		public GenericTypeVisitor(Types types) {

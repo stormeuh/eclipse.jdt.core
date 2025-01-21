@@ -13,7 +13,10 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core;
 
-import org.eclipse.jdt.core.*;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IPackageDeclaration;
+import org.eclipse.jdt.core.ISourceRange;
+import org.eclipse.jdt.core.JavaModelException;
 
 /**
  * @see IPackageDeclaration
@@ -21,7 +24,7 @@ import org.eclipse.jdt.core.*;
 
 public class PackageDeclaration extends SourceRefElement implements IPackageDeclaration {
 
-	String name;
+	private final String name;
 
 protected PackageDeclaration(CompilationUnit parent, String name) {
 	super(parent);
@@ -66,10 +69,10 @@ public JavaElement getPrimaryElement(boolean checkOwner) {
 	return cu.getPackageDeclaration(this.name);
 }
 /**
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	buffer.append("package "); //$NON-NLS-1$
 	toStringName(buffer);

@@ -21,10 +21,13 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
+import org.eclipse.jdt.internal.compiler.codegen.BranchLabel;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
 
 public class Block extends Statement {
 
@@ -44,8 +47,7 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, Fl
 	int complaintLevel = (flowInfo.reachMode() & FlowInfo.UNREACHABLE) != 0 ? Statement.COMPLAINED_FAKE_REACHABLE : Statement.NOT_COMPLAINED;
 	CompilerOptions compilerOptions = currentScope.compilerOptions();
 	boolean enableSyntacticNullAnalysisForFields = compilerOptions.enableSyntacticNullAnalysisForFields;
-	for (int i = 0, max = this.statements.length; i < max; i++) {
-		Statement stat = this.statements[i];
+	for (Statement stat : this.statements) {
 		if ((complaintLevel = stat.complainIfUnreachable(flowInfo, this.scope, complaintLevel, true)) < Statement.COMPLAINED_UNREACHABLE) {
 			flowInfo = stat.analyseCode(this.scope, flowContext, flowInfo);
 		}
@@ -55,7 +57,7 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, Fl
 			flowContext.expireNullCheckedFieldInfo();
 		}
 		if (compilerOptions.analyseResourceLeaks) {
-			FakedTrackingVariable.cleanUpUnassigned(this.scope, stat, flowInfo);
+			FakedTrackingVariable.cleanUpUnassigned(this.scope, stat, flowInfo, false);
 		}
 	}
 	if (this.scope != currentScope) {
@@ -99,17 +101,17 @@ public boolean isEmptyBlock() {
 	return this.statements == null;
 }
 
-public StringBuffer printBody(int indent, StringBuffer output) {
+public StringBuilder printBody(int indent, StringBuilder output) {
 	if (this.statements == null) return output;
-	for (int i = 0; i < this.statements.length; i++) {
-		this.statements[i].printStatement(indent + 1, output);
+	for (Statement statement : this.statements) {
+		statement.printStatement(indent + 1, output);
 		output.append('\n');
 	}
 	return output;
 }
 
 @Override
-public StringBuffer printStatement(int indent, StringBuffer output) {
+public StringBuilder printStatement(int indent, StringBuilder output) {
 	printIndent(indent, output);
 	output.append("{\n"); //$NON-NLS-1$
 	printBody(indent, output);
@@ -126,10 +128,7 @@ public void resolve(BlockScope upperScope) {
 			this.explicitDeclarations == 0
 				? upperScope
 				: new BlockScope(upperScope, this.explicitDeclarations);
-		for (int i = 0, length = this.statements.length; i < length; i++) {
-			final Statement stmt = this.statements[i];
-			stmt.resolve(this.scope);
-		}
+		resolveStatements(this.statements, this.scope);
 	}
 }
 
@@ -140,9 +139,7 @@ public void resolveUsing(BlockScope givenScope) {
 	// this optimized resolve(...) is sent only on none empty blocks
 	this.scope = givenScope;
 	if (this.statements != null) {
-		for (int i = 0, length = this.statements.length; i < length; i++) {
-			this.statements[i].resolve(this.scope);
-		}
+		resolveStatements(this.statements, this.scope);
 	}
 }
 
@@ -150,8 +147,8 @@ public void resolveUsing(BlockScope givenScope) {
 public void traverse(ASTVisitor visitor, BlockScope blockScope) {
 	if (visitor.visit(this, blockScope)) {
 		if (this.statements != null) {
-			for (int i = 0, length = this.statements.length; i < length; i++)
-				this.statements[i].traverse(visitor, this.scope);
+			for (Statement statement : this.statements)
+				statement.traverse(visitor, this.scope);
 		}
 	}
 	visitor.endVisit(this, blockScope);

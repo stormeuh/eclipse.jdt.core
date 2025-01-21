@@ -19,16 +19,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import javax.tools.Diagnostic;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
-
-import org.eclipse.jdt.compiler.apt.tests.BatchTestUtils.DiagnosticReport;
-
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import org.eclipse.jdt.compiler.apt.tests.BatchTestUtils.DiagnosticReport;
 
 /**
  * Test the ability to execute annotation processors in batch mode, including
@@ -160,7 +157,7 @@ public class BatchDispatchTests extends TestCase {
 		File inputFile = BatchTestUtils.copyResource("targets/dispatch/WarnGenClass.java", targetFolder);
 		assertNotNull("No input file", inputFile);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		if (extraOptions != null) {
 			options.addAll(Arrays.asList(extraOptions));
 		}
@@ -208,7 +205,7 @@ public class BatchDispatchTests extends TestCase {
 		File inputFile = BatchTestUtils.copyResource("targets/dispatch/TwoAnnotations.java", targetFolder);
 		assertNotNull("No input file", inputFile);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		// See corresponding list in CheckArgsProc processor.
 		// Processor will throw IllegalStateException if it detects a mismatch.
 		options.add("-Afoo=bar");
@@ -233,7 +230,7 @@ public class BatchDispatchTests extends TestCase {
 		File inputFile = BatchTestUtils.copyResource("targets/dispatch/HasGenClass.java", targetFolder);
 		assertNotNull("No input file", inputFile);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		BatchTestUtils.compileOneClass(compiler, options, inputFile);
 
 		// check that the gen-src and class files were generated
@@ -253,7 +250,7 @@ public class BatchDispatchTests extends TestCase {
 		File inputFile = BatchTestUtils.copyResource("targets/dispatch/HasCheckArgs.java", targetFolder);
 		assertNotNull("No input file", inputFile);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		// See corresponding list in CheckArgsProc processor.
 		// Processor will throw IllegalStateException if it detects a mismatch.
 		options.add("-Afoo=bar");
@@ -272,7 +269,7 @@ public class BatchDispatchTests extends TestCase {
 		File targetFolder = TestUtils.concatPath(BatchTestUtils.getSrcFolderName(), "targets/dispatch", "inheritedanno");
 		BatchTestUtils.copyResources("targets/dispatch/inheritedanno", targetFolder);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-A" + processorClass);
 		BatchTestUtils.compileTree(compiler, options, targetFolder);
 
@@ -293,7 +290,7 @@ public class BatchDispatchTests extends TestCase {
 			"targets",
 			"dispatch");
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		// See corresponding list in CheckArgsProc processor.
 		// Processor will throw IllegalStateException if it detects a mismatch.
 		options.add("-classpath");

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2022 IBM Corporation and others.
+ * Copyright (c) 2000, 2024 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -31,7 +31,6 @@ package org.eclipse.jdt.internal.compiler.ast;
 
 import java.util.List;
 import java.util.function.BiPredicate;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.CompilationResult;
@@ -42,16 +41,7 @@ import org.eclipse.jdt.internal.compiler.flow.ExceptionHandlingFlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
-import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
-import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
-import org.eclipse.jdt.internal.compiler.lookup.ExtraCompilerModifiers;
-import org.eclipse.jdt.internal.compiler.lookup.LocalTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.MemberTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TagBits;
-import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TypeConstants;
-import org.eclipse.jdt.internal.compiler.lookup.TypeVariableBinding;
+import org.eclipse.jdt.internal.compiler.lookup.*;
 import org.eclipse.jdt.internal.compiler.parser.Parser;
 import org.eclipse.jdt.internal.compiler.problem.AbortMethod;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
@@ -98,8 +88,7 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 			// https://bugs.eclipse.org/bugs/show_bug.cgi?id=385780
 			if (this.typeParameters != null &&
 					!this.scope.referenceCompilationUnit().compilationResult.hasSyntaxError) {
-				for (int i = 0, length = this.typeParameters.length; i < length; ++i) {
-					TypeParameter typeParameter = this.typeParameters[i];
+				for (TypeParameter typeParameter : this.typeParameters) {
 					if ((typeParameter.binding.modifiers  & ExtraCompilerModifiers.AccLocallyUsed) == 0) {
 						this.scope.problemReporter().unusedTypeParameter(typeParameter);
 					}
@@ -114,8 +103,8 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 					this.scope,
 					FlowInfo.DEAD_END);
 
-			// nullity and mark as assigned
-			analyseArguments(classScope.environment(), flowInfo, this.arguments, this.binding);
+			// nullity, owning and mark as assigned
+			analyseArguments(classScope.environment(), flowInfo, flowContext, this.arguments, this.binding);
 
 			BiPredicate<TypeBinding, ReferenceBinding> condition = (argType, declClass) -> {
 				ReferenceBinding enclosingType = argType.enclosingType();
@@ -144,16 +133,32 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 				// method of a non-static member type can't be static.
 				this.bits &= ~ASTNode.CanBeStatic;
 			}
+			CompilerOptions compilerOptions = this.scope.compilerOptions();
+			if (compilerOptions.isAnnotationBasedResourceAnalysisEnabled
+					&& this.binding.isClosingMethod())
+			{
+				// implementation of AutoCloseable.close() should close all @Owning fields, create the obligation now:
+				ReferenceBinding currentClass = this.binding.declaringClass;
+				while (currentClass != null) {
+					for (FieldBinding fieldBinding : currentClass.fields()) {
+						if (!fieldBinding.isStatic()
+								&& fieldBinding.type.hasTypeBit(TypeIds.BitAutoCloseable|TypeIds.BitCloseable)
+								&& (fieldBinding.tagBits & TagBits.AnnotationOwning) != 0) {
+							fieldBinding.closeTracker = new FakedTrackingVariable(fieldBinding, this.scope, this,
+									flowInfo, flowContext, FlowInfo.NULL, true);
+						}
+					}
+					currentClass = currentClass.superclass();
+				}
+			}
 			// propagate to statements
 			if (this.formalSpecification != null)
 				flowInfo = this.formalSpecification.analyseCode(this.scope, methodContext, flowInfo);
 			
 			if (this.statements != null) {
-				CompilerOptions compilerOptions = this.scope.compilerOptions();
 				boolean enableSyntacticNullAnalysisForFields = compilerOptions.enableSyntacticNullAnalysisForFields;
 				int complaintLevel = (flowInfo.reachMode() & FlowInfo.UNREACHABLE) == 0 ? Statement.NOT_COMPLAINED : Statement.COMPLAINED_FAKE_REACHABLE;
-				for (int i = 0, count = this.statements.length; i < count; i++) {
-					Statement stat = this.statements[i];
+				for (Statement stat : this.statements) {
 					if ((complaintLevel = stat.complainIfUnreachable(flowInfo, this.scope, complaintLevel, true)) < Statement.COMPLAINED_UNREACHABLE) {
 						flowInfo = stat.analyseCode(this.scope, methodContext, flowInfo);
 					}
@@ -161,7 +166,7 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 						methodContext.expireNullCheckedFieldInfo();
 					}
 					if (compilerOptions.analyseResourceLeaks) {
-						FakedTrackingVariable.cleanUpUnassigned(this.scope, stat, flowInfo);
+						FakedTrackingVariable.cleanUpUnassigned(this.scope, stat, flowInfo, false);
 					}
 				}
 			} else {
@@ -203,8 +208,7 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 	@Override
 	public void getAllAnnotationContexts(int targetType, List allAnnotationContexts) {
 		AnnotationCollector collector = new AnnotationCollector(this.returnType, targetType, allAnnotationContexts);
-		for (int i = 0, max = this.annotations.length; i < max; i++) {
-			Annotation annotation = this.annotations[i];
+		for (Annotation annotation : this.annotations) {
 			annotation.traverse(collector, (BlockScope) null);
 		}
 	}
@@ -218,6 +222,13 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 	@Override
 	public boolean isDefaultMethod() {
 		return (this.modifiers & ExtraCompilerModifiers.AccDefaultMethod) != 0;
+	}
+
+	@Override
+	public boolean isCandidateMain() {
+		if (this.binding == null)
+			return false;
+		return this.binding.isCandindateMain();
 	}
 
 	@Override
@@ -252,11 +263,10 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 	public void parseStatements(Parser parser, CompilationUnitDeclaration unit) {
 		//fill up the method body with statement
 		parser.parse(this, unit);
-		this.containsSwitchWithTry = parser.switchWithTry;
 	}
 
 	@Override
-	public StringBuffer printReturnType(int indent, StringBuffer output) {
+	public StringBuilder printReturnType(int indent, StringBuilder output) {
 		if (this.returnType == null) return output;
 		return this.returnType.printExpression(0, output).append(' ');
 	}
@@ -277,9 +287,9 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 			if (this.typeParameters != null)
 				this.scope.problemReporter().recordAccessorMethodShouldNotBeGeneric(this);
 			if (this.binding != null) {
-				if ((this.binding.modifiers & ClassFileConstants.AccPublic) == 0)
+				if (!(this.binding.isPublic()))
 					this.scope.problemReporter().recordAccessorMethodShouldBePublic(this);
-				if ((this.binding.modifiers & ClassFileConstants.AccStatic) != 0)
+				if (this.binding.isStatic())
 					this.scope.problemReporter().recordAccessorMethodShouldNotBeStatic(this);
 			}
 			if (this.thrownExceptions != null)
@@ -295,11 +305,10 @@ public class MethodDeclaration extends AbstractMethodDeclaration {
 			returnsUndeclTypeVar = true;
 		}
 		if (this.typeParameters != null) {
-			for (int i = 0, length = this.typeParameters.length; i < length; i++) {
-				TypeParameter typeParameter = this.typeParameters[i];
+			for (TypeParameter typeParameter : this.typeParameters) {
 				this.bits |= (typeParameter.bits & ASTNode.HasTypeAnnotations);
 				// typeParameter is already resolved from Scope#connectTypeVariables()
-				if (returnsUndeclTypeVar && TypeBinding.equalsEquals(this.typeParameters[i].binding, this.returnType.resolvedType)) {
+				if (returnsUndeclTypeVar && TypeBinding.equalsEquals(typeParameter.binding, this.returnType.resolvedType)) {
 					returnsUndeclTypeVar = false;
 				}
 			}

@@ -16,7 +16,7 @@ package org.eclipse.jdt.internal.core.search;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
-
+import java.util.Set;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -25,16 +25,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.jdt.core.IClasspathContainer;
-import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaElementDelta;
-import org.eclipse.jdt.core.IJavaModel;
-import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.IMember;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.internal.compiler.env.AccessRuleSet;
 import org.eclipse.jdt.internal.core.ClasspathEntry;
 import org.eclipse.jdt.internal.core.ExternalFoldersManager;
@@ -49,15 +40,14 @@ import org.eclipse.jdt.internal.core.util.Util;
 /**
  * A Java-specific scope for searching relative to one or more java elements.
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
 public class JavaSearchScope extends AbstractJavaSearchScope {
 
-	private ArrayList elements;
+	private HashSet<IJavaElement> elements;
 
-	/* The paths of the resources in this search scope
-	    (or the classpath entries' paths if the resources are projects)
-	*/
-	private ArrayList projectPaths = new ArrayList(); // container paths projects
+	/**
+	 * The paths of the resources in this search scope (or the classpath entries' paths if the resources are projects)
+	 */
+	private ArrayList<String> projectPaths = new ArrayList<>(); // container paths projects
 	private int[] projectIndexes; // Indexes of projects in list
 	private String[] containerPaths; // path to the container (e.g. /P/src, /P/lib.jar, c:\temp\mylib.jar)
 	private String[] relativePaths; // path relative to the container (e.g. x/y/Z.class, x/y, (empty))
@@ -99,10 +89,10 @@ private void addEnclosingProjectOrJar(IPath path) {
 
 /**
  * Add java project all fragment roots to current java search scope.
- * @see #add(JavaProject, IPath, int, HashSet, HashSet, IClasspathEntry)
+ * @see #add(JavaProject, IPath, int, Set, Set, IClasspathEntry)
  */
-public void add(JavaProject project, int includeMask, HashSet projectsToBeAdded) throws JavaModelException {
-	add(project, null, includeMask, projectsToBeAdded, new HashSet(2), null);
+public void add(JavaProject project, int includeMask, Set<JavaProject>  projectsToBeAdded) throws JavaModelException {
+	add(project, null, includeMask, projectsToBeAdded, new HashSet<>(2), null);
 }
 /**
  * Add a path to current java search scope or all project fragment roots if null.
@@ -116,7 +106,7 @@ public void add(JavaProject project, int includeMask, HashSet projectsToBeAdded)
  * @param referringEntry Project raw entry in referring project classpath
  * @throws JavaModelException May happen while getting java model info
  */
-void add(JavaProject javaProject, IPath pathToAdd, int includeMask, HashSet projectsToBeAdded, HashSet visitedProjects, IClasspathEntry referringEntry) throws JavaModelException {
+void add(JavaProject javaProject, IPath pathToAdd, int includeMask, Set<JavaProject> projectsToBeAdded, Set<IProject> visitedProjects, IClasspathEntry referringEntry) throws JavaModelException {
 	IProject project = javaProject.getProject();
 	if (!project.isAccessible() || !visitedProjects.add(project)) return;
 
@@ -147,9 +137,9 @@ void add(JavaProject javaProject, IPath pathToAdd, int includeMask, HashSet proj
 		switch (entry.getEntryKind()) {
 			case IClasspathEntry.CPE_LIBRARY:
 				IClasspathEntry rawEntry = null;
-				Map rootPathToRawEntries = perProjectInfo.rootPathToRawEntries;
+				Map<IPath, IClasspathEntry> rootPathToRawEntries = perProjectInfo.rootPathToRawEntries;
 				if (rootPathToRawEntries != null) {
-					rawEntry = (IClasspathEntry) rootPathToRawEntries.get(entry.getPath());
+					rawEntry = rootPathToRawEntries.get(entry.getPath());
 				}
 				if (rawEntry == null) break;
 				rawKind: switch (rawEntry.getEntryKind()) {
@@ -158,7 +148,7 @@ void add(JavaProject javaProject, IPath pathToAdd, int includeMask, HashSet proj
 						if ((includeMask & APPLICATION_LIBRARIES) != 0) {
 							IPath path = entry.getPath();
 							if (pathToAdd == null || pathToAdd.equals(path)) {
-								Object target = JavaModel.getTarget(path, false/*don't check existence*/);
+								Object target = JavaModel.getTarget(entry, false/*don't check existence*/);
 								if (target instanceof IFolder) // case of an external folder
 									path = ((IFolder) target).getFullPath();
 								String pathToString = path.getDevice() == null ? path.toString() : path.toOSString();
@@ -183,7 +173,7 @@ void add(JavaProject javaProject, IPath pathToAdd, int includeMask, HashSet proj
 						}
 						IPath path = entry.getPath();
 						if (pathToAdd == null || pathToAdd.equals(path)) {
-							Object target = JavaModel.getTarget(path, false/*don't check existence*/);
+							Object target = JavaModel.getTarget(entry, false/*don't check existence*/);
 							if (target instanceof IFolder) // case of an external folder
 								path = ((IFolder) target).getFullPath();
 							String pathToString = path.getDevice() == null ? path.toString() : path.toOSString();
@@ -230,7 +220,7 @@ public void add(IJavaElement element) throws JavaModelException {
 			// a workspace sope should be used
 			break;
 		case IJavaElement.JAVA_PROJECT:
-			add((JavaProject)element, null, includeMask, new HashSet(2), new HashSet(2), null);
+			add((JavaProject)element, null, includeMask, new HashSet<>(2), new HashSet<>(2), null);
 			break;
 		case IJavaElement.PACKAGE_FRAGMENT_ROOT:
 			root = (PackageFragmentRoot)element;
@@ -273,7 +263,7 @@ public void add(IJavaElement element) throws JavaModelException {
 			// remember sub-cu (or sub-class file) java elements
 			if (element instanceof IMember) {
 				if (this.elements == null) {
-					this.elements = new ArrayList();
+					this.elements = new HashSet<>();
 				}
 				this.elements.add(element);
 			}
@@ -302,9 +292,10 @@ public void add(IJavaElement element) throws JavaModelException {
 private void add(String projectPath, String relativePath, String containerPath, boolean isPackage, AccessRuleSet access) {
 	// normalize containerPath and relativePath
 	containerPath = normalize(containerPath);
+	containerPath = convertInternalToExternalPath(containerPath);
 	relativePath = normalize(relativePath);
-	int length = this.containerPaths.length,
-		index = (containerPath.hashCode()& 0x7FFFFFFF) % length;
+	int length = this.containerPaths.length;
+	int index = (containerPath.hashCode() & 0x7FFFFFFF) % length;
 	String currentRelativePath, currentContainerPath;
 	while ((currentRelativePath = this.relativePaths[index]) != null && (currentContainerPath = this.containerPaths[index]) != null) {
 		if (currentRelativePath.equals(relativePath) && currentContainerPath.equals(containerPath))
@@ -370,6 +361,7 @@ public boolean encloses(String resourcePathString) {
 private int indexOf(String fullPath) {
 	// cannot guess the index of the container path
 	// fallback to sequentially looking at all known paths
+	fullPath = convertInternalToExternalPath(fullPath);
 	for (int i = 0, length = this.relativePaths.length; i < length; i++) {
 		String currentRelativePath = this.relativePaths[i];
 		if (currentRelativePath == null) continue;
@@ -396,9 +388,10 @@ private int indexOf(String fullPath) {
  *   4. (empty)
  */
 private int indexOf(String containerPath, String relativePath) {
+	containerPath = convertInternalToExternalPath(containerPath);
+	int length = this.containerPaths.length;
 	// use the hash to get faster comparison
-	int length = this.containerPaths.length,
-		index = (containerPath.hashCode()& 0x7FFFFFFF) % length;
+    int index = (containerPath.hashCode()& 0x7FFFFFFF) % length;
 	String currentContainerPath;
 	while ((currentContainerPath = this.containerPaths[index]) != null) {
 		if (currentContainerPath.equals(containerPath)) {
@@ -411,6 +404,29 @@ private int indexOf(String containerPath, String relativePath) {
 		}
 	}
 	return -1;
+}
+
+/**
+ * If the given path is internal but represents an external folder,
+ * converts it to the corresponding external path.
+ * No conversion takes place if the given path does not represent an external folder.
+ * @param given the given path to convert if necessary
+
+ * @return the external path that corresponds to the given path,
+ * or the given path itself if no conversion is necessary
+ */
+private String convertInternalToExternalPath(String given) {
+	IPath givenPath = new Path(given);
+	if (ExternalFoldersManager.isInternalPathForExternalFolder(givenPath)) {
+		IResource targetResource = JavaModel.getWorkspaceTarget(givenPath);
+		if (targetResource != null) {
+			IPath targetLocation = targetResource.getLocation();
+			if (targetLocation != null) {
+				return targetLocation.toString();
+			}
+		}
+	}
+	return given;
 }
 
 /*
@@ -455,15 +471,12 @@ private boolean encloses(String enclosingPath, String path, int index) {
 @Override
 public boolean encloses(IJavaElement element) {
 	if (this.elements != null) {
-		for (int i = 0, length = this.elements.size(); i < length; i++) {
-			IJavaElement scopeElement = (IJavaElement)this.elements.get(i);
-			IJavaElement searchedElement = element;
-			while (searchedElement != null) {
-				if (searchedElement.equals(scopeElement))
-					return true;
-				searchedElement = searchedElement.getParent();
+		IJavaElement searchedElement = element;
+		do {
+			if (this.elements.contains(searchedElement)) {
+				return true;
 			}
-		}
+		} while ((searchedElement = searchedElement.getParent()) != null);
 		return false;
 	}
 	IPackageFragmentRoot root = (IPackageFragmentRoot) element.getAncestor(IJavaElement.PACKAGE_FRAGMENT_ROOT);
@@ -532,7 +545,7 @@ protected void initialize(int size) {
 		extraRoom++;
 	this.relativePaths = new String[extraRoom];
 	this.containerPaths = new String[extraRoom];
-	this.projectPaths = new ArrayList();
+	this.projectPaths = new ArrayList<>();
 	this.projectIndexes = new int[extraRoom];
 	this.isPkgPath = new boolean[extraRoom];
 	this.pathRestrictions = null; // null to optimize case where no access rules are used
@@ -558,8 +571,7 @@ public void processDelta(IJavaElementDelta delta, int eventType) {
 	switch (delta.getKind()) {
 		case IJavaElementDelta.CHANGED:
 			IJavaElementDelta[] children = delta.getAffectedChildren();
-			for (int i = 0, length = children.length; i < length; i++) {
-				IJavaElementDelta child = children[i];
+			for (IJavaElementDelta child : children) {
 				processDelta(child, eventType);
 			}
 			break;
@@ -575,7 +587,7 @@ public void processDelta(IJavaElementDelta delta, int eventType) {
 						path = ((IJavaProject)element).getProject().getFullPath().toString();
 						break;
 					case IJavaElement.PACKAGE_FRAGMENT_ROOT:
-						path = ((IPackageFragmentRoot)element).getPath().toString();
+						path = element.getPath().toString();
 						break;
 					default:
 						return;
@@ -624,6 +636,12 @@ public IPackageFragmentRoot packageFragmentRoot(String resourcePathString, int j
 				return project.getPackageFragmentRoot(jarPath);
 			}
 			Object target = JavaModel.getWorkspaceTarget(new Path(this.containerPaths[index]+'/'+this.relativePaths[index]));
+			if (target == null) {
+				Path path = new Path(resourcePathString);
+				if(ExternalFoldersManager.isInternalPathForExternalFolder(path)) {
+					target = JavaModel.getWorkspaceTarget(path);
+				}
+			}
 			if (target != null) {
 				if (target instanceof IProject) {
 					return project.getPackageFragmentRoot((IProject) target);
@@ -661,10 +679,9 @@ public String toString() {
 	StringBuilder result = new StringBuilder("JavaSearchScope on "); //$NON-NLS-1$
 	if (this.elements != null) {
 		result.append("["); //$NON-NLS-1$
-		for (int i = 0, length = this.elements.size(); i < length; i++) {
-			JavaElement element = (JavaElement)this.elements.get(i);
+		for (IJavaElement element : this.elements) {
 			result.append("\n\t"); //$NON-NLS-1$
-			result.append(element.toStringWithAncestors());
+			result.append(((JavaElement) element).toStringWithAncestors());
 		}
 		result.append("\n]"); //$NON-NLS-1$
 	} else {

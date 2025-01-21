@@ -14,10 +14,10 @@
 package org.eclipse.jdt.internal.core.search.matching;
 
 import java.io.IOException;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.search.SearchPattern;
-import org.eclipse.jdt.internal.core.index.*;
+import org.eclipse.jdt.internal.core.index.EntryResult;
+import org.eclipse.jdt.internal.core.index.Index;
 
 public class MultiTypeDeclarationPattern extends JavaSearchPattern {
 
@@ -168,7 +168,7 @@ public EntryResult[] queryIn(Index index) throws IOException {
 	return allEntries;
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	switch (this.typeSuffix){
 		case CLASS_SUFFIX :
 			output.append("MultiClassDeclarationPattern: "); //$NON-NLS-1$

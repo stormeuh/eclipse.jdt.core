@@ -17,14 +17,14 @@ package org.eclipse.jdt.core.tests.model;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-
-import org.eclipse.jdt.core.tests.compiler.CharDeduplicationTest;
-import org.eclipse.jdt.core.tests.compiler.DeduplicationUtilTest;
-import org.eclipse.jdt.core.tests.compiler.map.CharArrayMapperTest;
-import org.eclipse.jdt.core.tests.junit.extension.TestCase;
-
 import junit.framework.Test;
 import junit.framework.TestSuite;
+import org.eclipse.jdt.core.tests.compiler.CharDeduplicationTest;
+import org.eclipse.jdt.core.tests.compiler.DeduplicationUtilTest;
+import org.eclipse.jdt.core.tests.compiler.IrritantSetTest;
+import org.eclipse.jdt.core.tests.compiler.map.CharArrayMapperTest;
+import org.eclipse.jdt.core.tests.junit.extension.TestCase;
+import org.eclipse.jdt.core.tests.util.CleanupAfterSuiteTests;
 
 /**
  * Run all java model tests.
@@ -64,6 +64,9 @@ private static Class[] getAllTestClasses() {
 
 		// Attached javadoc tests
 		AttachedJavadocTests.class,
+		AttachedJavadocTests21.class,
+
+		SealedTypeModelTests.class,
 
 		// Java search tests
 		RunJavaSearchTests.class,
@@ -112,10 +115,18 @@ private static Class[] getAllTestClasses() {
 		ResolveTests9.class,
 		ResolveTests10.class,
 		ResolveTests12To15.class,
+		ResolveTests21.class,
+		ResolveTests23.class,
 		SelectionJavadocModelTests.class,
+
+		// Some test suite above breaks completion tests below
+		CleanupAfterSuiteTests.class,
 
 		// Support for completion tests
 		RunCompletionModelTests.class,
+
+		// Some test suite above breaks completion tests below
+		CleanupAfterSuiteTests.class,
 
 		// Prefix and suffix tests
 		NamingConventionTests.class,
@@ -137,6 +148,8 @@ private static Class[] getAllTestClasses() {
 		// Reconciler tests
 		ReconcilerTests.class,
 		ReconcilerTests9.class,
+		ReconcilerTests16.class,
+		ReconcilerTests21.class,
 		ReconcilerStatementsRecoveryTests.class,
 
 		// Copy and move operation tests
@@ -239,6 +252,11 @@ private static Class[] getAllTestClasses() {
 		DeduplicationUtilTest.class,
 
 		RecordsElementTests.class,
+
+		IrritantSetTest.class,
+
+		// should always be the last one, to cleanup environment after messy tests
+		CleanupAfterSuiteTests.class
 	};
 
 	Class[] deprecatedClasses = getDeprecatedJDOMTestClasses();

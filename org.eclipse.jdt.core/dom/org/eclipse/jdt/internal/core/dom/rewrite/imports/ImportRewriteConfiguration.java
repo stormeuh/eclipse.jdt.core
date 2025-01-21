@@ -19,7 +19,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IPackageDeclaration;
@@ -161,7 +160,7 @@ public final class ImportRewriteConfiguration {
 		JAVA_LANG_AND_CU_PACKAGE {
 			@Override
 			Set<String> determineImplicitImportContainers(ICompilationUnit compilationUnit) {
-				Set<String> implicitImportContainerNames = new HashSet<String>();
+				Set<String> implicitImportContainerNames = new HashSet<>();
 
 				implicitImportContainerNames.add("java.lang"); //$NON-NLS-1$
 
@@ -246,7 +245,7 @@ public final class ImportRewriteConfiguration {
 		}
 
 		public Builder setImportOrder(List<String> importOrder) {
-			this.importOrder = Collections.unmodifiableList(new ArrayList<String>(importOrder));
+			this.importOrder = Collections.unmodifiableList(new ArrayList<>(importOrder));
 			return this;
 		}
 

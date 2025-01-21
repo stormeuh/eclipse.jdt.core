@@ -64,6 +64,14 @@
 	schema="schema/compilationParticipant.exsd"/>
 
 <!-- =================================================================================== -->
+<!-- Extension Point: Compilation Unit Resolver                                            -->
+<!-- =================================================================================== -->
+
+<extension-point name="%compilationUnitResolverName" 
+	id="compilationUnitResolver"
+	schema="schema/compilationUnitResolver.exsd"/>
+
+<!-- =================================================================================== -->
 <!-- Extension Point: Java 6 Annotation Processor Manager                                -->
 <!-- =================================================================================== -->
 
@@ -88,7 +96,7 @@
 	id="javanature"
 	name="%javaNatureName">
 	<runtime>
-		<run class="org.eclipse.jdt.internal.core.JavaProject">
+		<run class="org.eclipse.jdt.internal.core.JavaNature">
 		</run>
 	</runtime>
 </extension>

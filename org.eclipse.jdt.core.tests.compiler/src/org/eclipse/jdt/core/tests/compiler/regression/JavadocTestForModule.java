@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
-import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,12 +28,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import org.eclipse.jdt.core.tests.util.Util;
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
+import org.eclipse.jdt.core.tests.util.Util;
+import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 
 public class JavadocTestForModule extends AbstractBatchCompilerTest {
 
@@ -82,7 +79,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 	}
 
 	class Runner extends AbstractRegressionTest.Runner {
-		StringBuffer commandLine = new StringBuffer();
+		StringBuilder commandLine = new StringBuilder();
 		String outputDir = OUTPUT_DIR + File.separator + "javac";
 		List<String> fileNames = new ArrayList<>();
 		/** will replace any -8, -9 ... option for javac */
@@ -115,7 +112,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 		}
 	}
 
-	void runConformModuleTest(List<String> testFileNames, StringBuffer commandLine,
+	void runConformModuleTest(List<String> testFileNames, StringBuilder commandLine,
 			String expectedFailureOutOutputString, String expectedFailureErrOutputString,
 			boolean shouldFlushOutputDirectory)
 	{
@@ -123,7 +120,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 				expectedFailureOutOutputString, expectedFailureErrOutputString, shouldFlushOutputDirectory, OUTPUT_DIR + File.separator + "javac");
 	}
 
-	void runConformModuleTest(List<String> testFileNames, StringBuffer commandLine,
+	void runConformModuleTest(List<String> testFileNames, StringBuilder commandLine,
 			String expectedFailureOutOutputString, String expectedFailureErrOutputString,
 			boolean shouldFlushOutputDirectory, String output)
 	{
@@ -147,7 +144,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 			boolean shouldFlushOutputDirectory, String output, JavacTestOptions options, String javacCommandLine)
 	{
 		this.runConformTest(testFiles, commandLine, expectedFailureOutOutputString, expectedFailureErrOutputString, shouldFlushOutputDirectory);
-		if (RUN_JAVAC) {
+		if (shouldRunJavac()) {
 			File outputDir = new File(output);
 			final Set<String> outFiles = new HashSet<>();
 			walkOutFiles(output, outFiles, true);
@@ -165,7 +162,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 					System.err.println("Skip testing javac in "+testName());
 					continue;
 				}
-				StringBuffer log = new StringBuffer();
+				StringBuilder log = new StringBuilder();
 				try {
 					long compileResult = javacCompiler.compile(
 											outputDir, /* directory */
@@ -191,21 +188,21 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 		return null;
 	}
 
-	void runNegativeModuleTest(List<String> testFileNames, StringBuffer commandLine,
+	void runNegativeModuleTest(List<String> testFileNames, StringBuilder commandLine,
 			String expectedFailureOutOutputString, String expectedFailureErrOutputString,
 			boolean shouldFlushOutputDirectory, String javacErrorMatch) {
 		runNegativeModuleTest(testFileNames, commandLine, expectedFailureOutOutputString,
 				expectedFailureErrOutputString, shouldFlushOutputDirectory, javacErrorMatch, OUTPUT_DIR + File.separator + "javac");
 	}
 
-	void runNegativeModuleTest(List<String> testFileNames, StringBuffer commandLine,
+	void runNegativeModuleTest(List<String> testFileNames, StringBuilder commandLine,
 			String expectedFailureOutOutputString, String expectedFailureErrOutputString,
 			boolean shouldFlushOutputDirectory, String javacErrorMatch, String output)
 	{
 		runNegativeModuleTest(testFileNames, commandLine, expectedFailureOutOutputString, expectedFailureErrOutputString,
 				shouldFlushOutputDirectory, javacErrorMatch, output, JavacTestOptions.DEFAULT);
 	}
-	void runNegativeModuleTest(List<String> testFileNames, StringBuffer commandLine,
+	void runNegativeModuleTest(List<String> testFileNames, StringBuilder commandLine,
 			String expectedFailureOutOutputString, String expectedFailureErrOutputString,
 			boolean shouldFlushOutputDirectory, String javacErrorMatch, String output, JavacTestOptions options)
 	{
@@ -227,7 +224,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 			boolean shouldFlushOutputDirectory, String javacErrorMatch, String output, JavacTestOptions options)
 	{
 		this.runNegativeTest(testFiles, commandLine, expectedFailureOutOutputString, expectedFailureErrOutputString, shouldFlushOutputDirectory);
-		if (RUN_JAVAC) {
+		if (shouldRunJavac()) {
 			String[] testFileNames = new String[testFiles.length/2];
 			for (int i = 0; i < testFileNames.length; i++) {
 				testFileNames[i] = testFiles[i*2];
@@ -241,7 +238,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 				JavacTestOptions.Excuse excuse = options.excuseFor(javacCompiler);
 
 				commandLine = adjustForJavac(commandLine, null);
-				StringBuffer log = new StringBuffer();
+				StringBuilder log = new StringBuilder();
 				int mismatch = 0;
 				try {
 					long compileResult = javacCompiler.compile(
@@ -322,7 +319,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 		if (!(new File(outputLocation)).exists())
 			return;
 		try {
-			Files.walkFileTree(FileSystems.getDefault().getPath(outputLocation), new SimpleFileVisitor<Path>() {
+			Files.walkFileTree(Path.of(outputLocation), new SimpleFileVisitor<Path>() {
 				@Override
 				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 					if (file.toString().endsWith(".class")) {
@@ -616,7 +613,7 @@ public class JavadocTestForModule extends AbstractBatchCompilerTest {
 				"	public int foo() { return 0; }\n" +
 				"}");
 
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append("-d " + OUTPUT_DIR + File.separator + out )
 			.append(" -9 ")
 			.append(" -enableJavadoc ")

@@ -17,7 +17,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
-
 import org.eclipse.jdt.internal.compiler.util.ManifestAnalyzer;
 
 @SuppressWarnings({ "rawtypes" })
@@ -41,11 +40,8 @@ public class ManifestAnalyzerTest extends AbstractRegressionTest {
 	}
 
 	private void analyzeManifestContents(String contents) throws IOException {
-		InputStream stream = new ByteArrayInputStream(contents.getBytes());
-		try {
+		try (InputStream stream = new ByteArrayInputStream(contents.getBytes())) {
 			this.manifestAnalyzer.analyzeManifestContents(stream);
-		} finally {
-			stream.close();
 		}
 	}
 	public void testWithOneJarWithWiteSpace() throws IOException {
@@ -154,11 +150,8 @@ public class ManifestAnalyzerTest extends AbstractRegressionTest {
 	}
 
 	public void testWithOneJarUsingUTF8Name() throws IOException {
-		InputStream inputStream = ManifestAnalyzerTest.class.getResourceAsStream("MANIFEST.MF");
-		try {
+		try (InputStream inputStream = ManifestAnalyzerTest.class.getResourceAsStream("MANIFEST.MF")) {
 			this.manifestAnalyzer.analyzeManifestContents(inputStream);
-		} finally {
-			inputStream.close();
 		}
 		List jars = this.manifestAnalyzer.getCalledFileNames();
 		assertEquals("Wrong size", 1, jars.size());

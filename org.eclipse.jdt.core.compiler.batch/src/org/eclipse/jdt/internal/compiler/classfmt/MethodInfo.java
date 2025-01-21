@@ -24,11 +24,10 @@ import org.eclipse.jdt.internal.compiler.env.IBinaryAnnotation;
 import org.eclipse.jdt.internal.compiler.env.IBinaryMethod;
 import org.eclipse.jdt.internal.compiler.env.IBinaryTypeAnnotation;
 import org.eclipse.jdt.internal.compiler.lookup.TagBits;
+import org.eclipse.jdt.internal.compiler.util.CharDeduplication;
 
 @SuppressWarnings("rawtypes")
 public class MethodInfo extends ClassFileStruct implements IBinaryMethod, Comparable {
-	static private final char[][] noException = CharOperation.NO_CHAR_CHAR;
-	static private final char[][] noArgumentNames = CharOperation.NO_CHAR_CHAR;
 	static private final char[] ARG = "arg".toCharArray();  //$NON-NLS-1$
 	protected int accessFlags;
 	protected int attributeBytes;
@@ -215,8 +214,8 @@ static AnnotationInfo[][] decodeParamAnnotations(int offset, boolean runtimeVisi
 					allParamAnnotations = new AnnotationInfo[numberOfParameters][];
 				AnnotationInfo[] annos = decodeAnnotations(readOffset, runtimeVisible, numberOfAnnotations, methodInfo);
 				allParamAnnotations[i] = annos;
-				for (int aIndex = 0; aIndex < annos.length; aIndex++)
-					readOffset += annos[aIndex].readOffset;
+				for (AnnotationInfo info : annos)
+					readOffset += info.readOffset;
 			}
 		}
 	}
@@ -287,7 +286,7 @@ public char[] getGenericSignature() {
 	if (this.signatureUtf8Offset != -1) {
 		if (this.signature == null) {
 			// decode the signature
-			this.signature = utf8At(this.signatureUtf8Offset + 3, u2At(this.signatureUtf8Offset + 1));
+			this.signature = CharDeduplication.intern(utf8At(this.signatureUtf8Offset + 3, u2At(this.signatureUtf8Offset + 1)));
 		}
 		return this.signature;
 	}
@@ -299,7 +298,7 @@ public char[] getMethodDescriptor() {
 	if (this.descriptor == null) {
 		// read the name
 		int utf8Offset = this.constantPoolOffsets[u2At(4)] - this.structOffset;
-		this.descriptor = utf8At(utf8Offset + 3, u2At(utf8Offset + 1));
+		this.descriptor = CharDeduplication.intern(utf8At(utf8Offset + 3, u2At(utf8Offset + 1)));
 	}
 	return this.descriptor;
 }
@@ -335,7 +334,7 @@ public char[] getSelector() {
 	if (this.name == null) {
 		// read the name
 		int utf8Offset = this.constantPoolOffsets[u2At(2)] - this.structOffset;
-		this.name = utf8At(utf8Offset + 3, u2At(utf8Offset + 1));
+		this.name = CharDeduplication.intern(utf8At(utf8Offset + 3, u2At(utf8Offset + 1)));
 	}
 	return this.name;
 }
@@ -392,7 +391,7 @@ private synchronized void readExceptionAttributes() {
 			// place the readOffset at the beginning of the exceptions table
 			readOffset += 8;
 			if (entriesNumber == 0) {
-				names = noException;
+				names = CharOperation.NO_CHAR_CHAR;
 			} else {
 				names = new char[entriesNumber][];
 				for (int j = 0; j < entriesNumber; j++) {
@@ -409,7 +408,7 @@ private synchronized void readExceptionAttributes() {
 		}
 	}
 	if (names == null) {
-		this.exceptionNames = noException;
+		this.exceptionNames = CharOperation.NO_CHAR_CHAR;
 	} else {
 		this.exceptionNames = names;
 	}
@@ -456,15 +455,15 @@ public int sizeInBytes() {
 
 @Override
 public String toString() {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	toString(buffer);
 	return buffer.toString();
 }
-void toString(StringBuffer buffer) {
+void toString(StringBuilder buffer) {
 	buffer.append(getClass().getName());
 	toStringContent(buffer);
 }
-protected void toStringContent(StringBuffer buffer) {
+protected void toStringContent(StringBuilder buffer) {
 	BinaryTypeFormatter.methodToStringContent(buffer, this);
 }
 private synchronized void readCodeAttribute() {
@@ -476,8 +475,8 @@ private synchronized void readCodeAttribute() {
 			char[] attributeName = utf8At(utf8Offset + 3, u2At(utf8Offset + 1));
 			if (CharOperation.equals(attributeName, AttributeNamesConstants.CodeName)) {
 				decodeCodeAttribute(readOffset);
-				if (this.argumentNames == null) {
-					this.argumentNames = noArgumentNames;
+				if (this.argumentNames == null || this.argumentNames.length == 0) {
+					this.argumentNames = CharOperation.NO_CHAR_CHAR;
 				}
 				return;
 			} else {
@@ -485,11 +484,11 @@ private synchronized void readCodeAttribute() {
 			}
 		}
 	}
-	this.argumentNames = noArgumentNames;
+	this.argumentNames = CharOperation.NO_CHAR_CHAR;
 }
 private void decodeCodeAttribute(int offset) {
 	int readOffset = offset + 10;
-	int codeLength = (int) u4At(readOffset);
+	int codeLength = u4At(readOffset);
 	readOffset += (4 + codeLength);
 	int exceptionTableLength = u2At(readOffset);
 	readOffset += 2;
@@ -523,7 +522,7 @@ private void decodeLocalVariableAttribute(int offset, int codeLength) {
 				int utf8Offset = this.constantPoolOffsets[nameIndex] - this.structOffset;
 				char[] localVariableName = utf8At(utf8Offset + 3, u2At(utf8Offset + 1));
 				if (!CharOperation.equals(localVariableName, ConstantPool.This)) {
-					names[argumentNamesIndex++] = localVariableName;
+					names[argumentNamesIndex++] = CharDeduplication.intern(localVariableName);
 				}
 			} else {
 				break;
@@ -548,7 +547,7 @@ private void decodeMethodParameters(int offset, MethodInfo methodInfo) {
 			if (nameIndex != 0) {
 				int utf8Offset = this.constantPoolOffsets[nameIndex] - this.structOffset;
 				char[] parameterName = utf8At(utf8Offset + 3, u2At(utf8Offset + 1));
-				names[i] = parameterName;
+				names[i] = CharDeduplication.intern(parameterName);
 			} else {
 				names[i] = CharOperation.concat(ARG, String.valueOf(i).toCharArray());
 			}

@@ -15,12 +15,12 @@ package org.eclipse.jdt.internal.core.search.matching;
 
 import java.io.IOException;
 import java.util.regex.Pattern;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.core.index.*;
+import org.eclipse.jdt.internal.core.index.EntryResult;
+import org.eclipse.jdt.internal.core.index.Index;
 
 public class TypeDeclarationPattern extends JavaSearchPattern {
 
@@ -353,7 +353,7 @@ public EntryResult[] queryIn(Index index) throws IOException {
 	return index.query(getIndexCategories(), key, matchRule); // match rule is irrelevant when the key is null
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	switch (this.typeSuffix){
 		case CLASS_SUFFIX :
 			output.append("ClassDeclarationPattern: pkg<"); //$NON-NLS-1$

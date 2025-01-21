@@ -24,15 +24,13 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-
+import junit.framework.Test;
 import org.eclipse.jdt.core.compiler.ITerminalSymbols;
 import org.eclipse.jdt.core.compiler.InvalidInputException;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.parser.Scanner;
 import org.eclipse.jdt.internal.compiler.parser.TerminalTokens;
 import org.eclipse.jdt.internal.core.util.PublicScanner;
-
-import junit.framework.Test;
 
 /**
  * Test that validates {@link Scanner} and {@link PublicScanner} use of tokens.
@@ -70,14 +68,13 @@ public class PublicScannerTest extends AbstractRegressionTest {
 		Map<Integer, Integer> map = new HashMap<>();
 		map.put(TerminalTokens.TokenNameAT308DOTDOTDOT, TerminalTokens.TokenNameAT);
 		map.put(TerminalTokens.TokenNameAT308, TerminalTokens.TokenNameAT);
+		map.put(TerminalTokens.TokenNameCaseArrow, TerminalTokens.TokenNameARROW);
 		SYNTHETIC_REPLACE_TOKENS = Collections.unmodifiableMap(map);
 
 		List<Integer> list = new ArrayList<>();
-		list.add(TerminalTokens.TokenNameBeginCaseElement);
-		list.add(TerminalTokens.TokenNameBeginCaseExpr);
+		list.add(TerminalTokens.TokenNameBeginCasePattern);
 		list.add(TerminalTokens.TokenNameBeginIntersectionCast);
 		list.add(TerminalTokens.TokenNameBeginLambda);
-		list.add(TerminalTokens.TokenNameBeginRecordPattern);
 		list.add(TerminalTokens.TokenNameBeginTypeArguments);
 		list.add(TerminalTokens.TokenNameElidedSemicolonAndRightBrace);
 		SYNTHETIC_SKIP_TOKENS = Collections.unmodifiableList(list);
@@ -115,8 +112,14 @@ public class PublicScannerTest extends AbstractRegressionTest {
 		this.ttNameToValue = new TreeMap<>();
 		this.ttFields = TerminalTokens.class.getFields();
 		for (Field field : this.ttFields) {
-			this.ttValueToName.put(field.getInt(null), field.getName());
-			this.ttNameToValue.put(field.getName(), field.getInt(null));
+			// we are stuck with the clunkier names for API - map
+			String fName = field.getName();
+			if (fName.equals("TokenNamesealed"))
+				fName = "TokenNameRestrictedIdentifiersealed";
+			else if (fName.equals("TokenNamepermits"))
+				fName = "TokenNameRestrictedIdentifierpermits";
+			this.ttValueToName.put(field.getInt(null), fName);
+			this.ttNameToValue.put(fName, field.getInt(null));
 		}
 		if(this.ttValueToName.size() != this.ttNameToValue.size()) {
 			this.ttNameToValue.keySet().removeAll(this.ttValueToName.values());
@@ -302,7 +305,7 @@ public class PublicScannerTest extends AbstractRegressionTest {
 
 		Field[] tsFields = ITerminalSymbols.class.getFields();
 		Set<String> ttNames = nameToValue.keySet();
-		Set<String> tsSet = Arrays.asList(tsFields).stream().map(x -> x.getName()).collect(Collectors.toSet());
+		Set<String> tsSet = Arrays.asList(tsFields).stream().map(Field::getName).collect(Collectors.toSet());
 		StringBuilder sb = new StringBuilder();
 		String ident = "\t\t\t";
 		for (String ttName : ttNames) {

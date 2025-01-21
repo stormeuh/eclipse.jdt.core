@@ -17,29 +17,44 @@ package org.eclipse.jdt.internal.core.util;
 
 import static org.eclipse.jdt.internal.core.JavaModelManager.trace;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
-
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
-import org.eclipse.core.resources.*;
-import org.eclipse.core.runtime.*;
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ProjectScope;
+import org.eclipse.core.resources.ResourceAttributes;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.Assert;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Plugin;
+import org.eclipse.core.runtime.QualifiedName;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.preferences.IScopeContext;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ArrayType;
-import org.eclipse.jdt.core.dom.ParameterizedType;
-import org.eclipse.jdt.core.dom.PrimitiveType;
-import org.eclipse.jdt.core.dom.QualifiedType;
-import org.eclipse.jdt.core.dom.SimpleType;
-import org.eclipse.jdt.core.dom.Type;
-import org.eclipse.jdt.core.dom.WildcardType;
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.util.IClassFileAttribute;
 import org.eclipse.jdt.core.util.IClassFileReader;
 import org.eclipse.jdt.core.util.ICodeAttribute;
@@ -91,7 +106,7 @@ public class Util {
 	public interface Comparable {
 		/**
 		 * Returns 0 if this and c are equal, >0 if this is greater than c,
-		 * or <0 if this is less than c.
+		 * or {@code <0} if this is less than c.
 		 */
 		int compareTo(Comparable c);
 	}
@@ -99,7 +114,7 @@ public class Util {
 	public interface Comparer {
 		/**
 		 * Returns 0 if a and b are equal, >0 if a is greater than b,
-		 * or <0 if a is less than b.
+		 * or {@code <0} if a is less than b.
 		 */
 		int compare(Object a, Object b);
 	}
@@ -233,9 +248,9 @@ public class Util {
 
 	/**
 	 * Compares two byte arrays.
-	 * Returns <0 if a byte in a is less than the corresponding byte in b, or if a is shorter, or if a is null.
-	 * Returns >0 if a byte in a is greater than the corresponding byte in b, or if a is longer, or if b is null.
-	 * Returns 0 if they are equal or both null.
+	 * Returns {@code <0} if a byte in a is less than the corresponding byte in b, or if a is shorter, or if a is null.
+	 * Returns {@code >0} if a byte in a is greater than the corresponding byte in b, or if a is longer, or if b is null.
+	 * Returns {@code 0} if they are equal or both null.
 	 */
 	public static int compare(byte[] a, byte[] b) {
 		if (a == b)
@@ -391,8 +406,8 @@ public class Util {
 		if (array == null || array.length == 0) return name;
 		if (name == null || name.length() == 0) return concatWith(array, separator);
 		StringBuilder buffer = new StringBuilder();
-		for (int i = 0, length = array.length; i < length; i++) {
-			buffer.append(array[i]);
+		for (String s : array) {
+			buffer.append(s);
 			buffer.append(separator);
 		}
 		buffer.append(name);
@@ -626,8 +641,7 @@ public class Util {
 			}
 		}
 		char[][] javaLikeExtensions = getJavaLikeExtensions();
-		suffixes: for (int i = 0, length = javaLikeExtensions.length; i < length; i++) {
-			char[] suffix = javaLikeExtensions[i];
+		suffixes: for (char[] suffix : javaLikeExtensions) {
 			int extensionStart = stringLength+1;
 			if (extensionStart + suffix.length != fileNameLength) continue;
 			if (fileName.charAt(stringLength) != '.') continue;
@@ -696,8 +710,7 @@ public class Util {
 	private static IFile findFirstClassFile(IFolder folder) {
 		try {
 			IResource[] members = folder.members();
-			for (int i = 0, max = members.length; i < max; i++) {
-				IResource member = members[i];
+			for (IResource member : members) {
 				if (member.getType() == IResource.FOLDER) {
 					return findFirstClassFile((IFolder)member);
 				} else if (org.eclipse.jdt.internal.compiler.util.Util.isClassFileName(member.getName())) {
@@ -713,7 +726,7 @@ public class Util {
 	/**
 	 * Finds the first line separator used by the given text.
 	 *
-	 * @return </code>"\n"</code> or </code>"\r"</code> or  </code>"\r\n"</code>,
+	 * @return <code>"\n"</code> or <code>"\r"</code> or  <code>"\r\n"</code>,
 	 *			or <code>null</code> if none found
 	 */
 	public static String findLineSeparator(char[] text) {
@@ -736,9 +749,9 @@ public class Util {
 
 	public static IClassFileAttribute getAttribute(IClassFileReader classFileReader, char[] attributeName) {
 		IClassFileAttribute[] attributes = classFileReader.getAttributes();
-		for (int i = 0, max = attributes.length; i < max; i++) {
-			if (CharOperation.equals(attributes[i].getAttributeName(), attributeName)) {
-				return attributes[i];
+		for (IClassFileAttribute attribute : attributes) {
+			if (CharOperation.equals(attribute.getAttributeName(), attributeName)) {
+				return attribute;
 			}
 		}
 		return null;
@@ -746,9 +759,9 @@ public class Util {
 
 	public static IClassFileAttribute getAttribute(ICodeAttribute codeAttribute, char[] attributeName) {
 		IClassFileAttribute[] attributes = codeAttribute.getAttributes();
-		for (int i = 0, max = attributes.length; i < max; i++) {
-			if (CharOperation.equals(attributes[i].getAttributeName(), attributeName)) {
-				return attributes[i];
+		for (IClassFileAttribute attribute : attributes) {
+			if (CharOperation.equals(attribute.getAttributeName(), attributeName)) {
+				return attribute;
 			}
 		}
 		return null;
@@ -756,18 +769,18 @@ public class Util {
 
 	public static IClassFileAttribute getAttribute(IFieldInfo fieldInfo, char[] attributeName) {
 		IClassFileAttribute[] attributes = fieldInfo.getAttributes();
-		for (int i = 0, max = attributes.length; i < max; i++) {
-			if (CharOperation.equals(attributes[i].getAttributeName(), attributeName)) {
-				return attributes[i];
+		for (IClassFileAttribute attribute : attributes) {
+			if (CharOperation.equals(attribute.getAttributeName(), attributeName)) {
+				return attribute;
 			}
 		}
 		return null;
 	}
 	public static IClassFileAttribute getAttribute(IComponentInfo componentInfo, char[] attributeName) {
 		IClassFileAttribute[] attributes = componentInfo.getAttributes();
-		for (int i = 0, max = attributes.length; i < max; i++) {
-			if (CharOperation.equals(attributes[i].getAttributeName(), attributeName)) {
-				return attributes[i];
+		for (IClassFileAttribute attribute : attributes) {
+			if (CharOperation.equals(attribute.getAttributeName(), attributeName)) {
+				return attribute;
 			}
 		}
 		return null;
@@ -775,9 +788,9 @@ public class Util {
 
 	public static IClassFileAttribute getAttribute(IMethodInfo methodInfo, char[] attributeName) {
 		IClassFileAttribute[] attributes = methodInfo.getAttributes();
-		for (int i = 0, max = attributes.length; i < max; i++) {
-			if (CharOperation.equals(attributes[i].getAttributeName(), attributeName)) {
-				return attributes[i];
+		for (IClassFileAttribute attribute : attributes) {
+			if (CharOperation.equals(attribute.getAttributeName(), attributeName)) {
+				return attribute;
 			}
 		}
 		return null;
@@ -832,11 +845,11 @@ public class Util {
 			HashSet fileExtensions = new HashSet();
 			// content types derived from java content type should be included (https://bugs.eclipse.org/bugs/show_bug.cgi?id=121715)
 			IContentType[] contentTypes = Platform.getContentTypeManager().getAllContentTypes();
-			for (int i = 0, length = contentTypes.length; i < length; i++) {
-				if (contentTypes[i].isKindOf(javaContentType)) { // note that javaContentType.isKindOf(javaContentType) == true
-					String[] fileExtension = contentTypes[i].getFileSpecs(IContentType.FILE_EXTENSION_SPEC);
-					for (int j = 0, length2 = fileExtension.length; j < length2; j++) {
-						fileExtensions.add(fileExtension[j]);
+			for (IContentType contentType : contentTypes) {
+				if (contentType.isKindOf(javaContentType)) { // note that javaContentType.isKindOf(javaContentType) == true
+					String[] fileExtension = contentType.getFileSpecs(IContentType.FILE_EXTENSION_SPEC);
+					for (String extension : fileExtension) {
+						fileExtensions.add(extension);
 					}
 				}
 			}
@@ -860,8 +873,8 @@ public class Util {
 	 * Get the jdk level of this root.
 	 * The value can be:
 	 * <ul>
-	 * <li>major<<16 + minor : see predefined constants on ClassFileConstants </li>
-	 * <li><code>0</null> if the root is a source package fragment root or if a Java model exception occured</li>
+	 * <li>{@code major<<16 + minor} : see predefined constants on ClassFileConstants </li>
+	 * <li>{@code 0} if the root is a source package fragment root or if a Java model exception occured</li>
 	 * </ul>
 	 * Returns the jdk level
 	 */
@@ -890,8 +903,8 @@ public class Util {
 							return ClassFileConstants.JDK9;
 						} else {
 							jar = JavaModelManager.getJavaModelManager().getZipFile(path);
-							for (Enumeration e= jar.entries(); e.hasMoreElements();) {
-								ZipEntry member= (ZipEntry) e.nextElement();
+							for (Enumeration<? extends ZipEntry> e= jar.entries(); e.hasMoreElements();) {
+								ZipEntry member= e.nextElement();
 								String entryName= member.getName();
 								if (org.eclipse.jdt.internal.compiler.util.Util.isClassFileName(entryName)) {
 									reader = ClassFileReader.read(jar, entryName);
@@ -1046,7 +1059,7 @@ public class Util {
 	 * Put all the arguments in one String.
 	 */
 	public static String getProblemArgumentsForMarker(String[] arguments){
-		StringBuffer args = new StringBuffer(10);
+		StringBuilder args = new StringBuilder(10);
 
 		args.append(arguments.length);
 		args.append(':');
@@ -1074,7 +1087,7 @@ public class Util {
 	 * @param argument the given argument
 	 * @param buffer the buffer in which the encoded argument is stored
 	 */
-	private static void encodeArgument(String argument, StringBuffer buffer) {
+	private static void encodeArgument(String argument, StringBuilder buffer) {
 		for (int i = 0, max = argument.length(); i < max; i++) {
 			char charAt = argument.charAt(i);
 			switch(charAt) {
@@ -1120,7 +1133,7 @@ public class Util {
 		}
 		String[] result = new String[length];
 		int count = 0;
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		for (int i = 0, max = argumentsString.length(); i < max; i++) {
 			char current = argumentsString.charAt(i);
 			switch(current) {
@@ -1171,22 +1184,10 @@ public class Util {
 	 * Returns the given file's contents as a byte array.
 	 */
 	public static byte[] getResourceContentsAsByteArray(IFile file) throws JavaModelException {
-		InputStream stream= null;
-		try {
-			stream = file.getContents(true);
+		try  {
+			return file.readAllBytes();
 		} catch (CoreException e) {
-			throw new JavaModelException(e);
-		}
-		try {
-			return org.eclipse.jdt.internal.compiler.util.Util.getInputStreamAsByteArray(stream);
-		} catch (IOException e) {
-			throw new JavaModelException(e, IJavaModelStatusConstants.IO_EXCEPTION);
-		} finally {
-			try {
-				stream.close();
-			} catch (IOException e) {
-				// ignore
-			}
+			throw new JavaModelException(e, IJavaModelStatusConstants.ELEMENT_DOES_NOT_EXIST);
 		}
 	}
 
@@ -1194,35 +1195,19 @@ public class Util {
 	 * Returns the given file's contents as a character array.
 	 */
 	public static char[] getResourceContentsAsCharArray(IFile file) throws JavaModelException {
-		// Get encoding from file
-		String encoding;
 		try {
-			encoding = file.getCharset();
-		} catch(CoreException ce) {
-			// do not use any encoding
-			encoding = null;
+			return file.readAllChars();
+		} catch (CoreException e) {
+			throw new JavaModelException(e, IJavaModelStatusConstants.ELEMENT_DOES_NOT_EXIST);
 		}
-		return getResourceContentsAsCharArray(file, encoding);
 	}
 
 	public static char[] getResourceContentsAsCharArray(IFile file, String encoding) throws JavaModelException {
 		// Get resource contents
-		InputStream stream= null;
 		try {
-			stream = file.getContents(true);
+			return org.eclipse.jdt.internal.compiler.util.Util.getBytesAsCharArray(file.readAllBytes(), encoding);
 		} catch (CoreException e) {
 			throw new JavaModelException(e, IJavaModelStatusConstants.ELEMENT_DOES_NOT_EXIST);
-		}
-		try {
-			return org.eclipse.jdt.internal.compiler.util.Util.getInputStreamAsCharArray(stream, encoding);
-		} catch (IOException e) {
-			throw new JavaModelException(e, IJavaModelStatusConstants.IO_EXCEPTION);
-		} finally {
-			try {
-				stream.close();
-			} catch (IOException e) {
-				// ignore
-			}
 		}
 	}
 
@@ -1230,7 +1215,17 @@ public class Util {
 	 * Returns the signature of the given type.
 	 */
 	public static String getSignature(Type type) {
-		StringBuffer buffer = new StringBuffer();
+		if (type instanceof UnionType union) {
+			return Signature.createUnionTypeSignature(((List<Type>)union.types()).stream()
+				.map(Util::getSignature)
+				.toArray(String[]::new));
+		}
+		if (type instanceof IntersectionType intersection) {
+			return Signature.createIntersectionTypeSignature(((List<Type>)intersection.types()).stream()
+				.map(Util::getSignature)
+				.toArray(String[]::new));
+		}
+		StringBuilder buffer = new StringBuilder();
 		getFullyQualifiedName(type, buffer);
 		return Signature.createTypeSignature(buffer.toString(), false/*not resolved in source*/);
 	}
@@ -1293,7 +1288,7 @@ public class Util {
 	/*
 	 * Appends to the given buffer the fully qualified name (as it appears in the source) of the given type
 	 */
-	private static void getFullyQualifiedName(Type type, StringBuffer buffer) {
+	public static void getFullyQualifiedName(Type type, StringBuilder buffer) {
 		switch (type.getNodeType()) {
 			case ASTNode.ARRAY_TYPE:
 				ArrayType arrayType = (ArrayType) type;
@@ -1323,7 +1318,10 @@ public class Util {
 				buffer.append(((PrimitiveType) type).getPrimitiveTypeCode().toString());
 				break;
 			case ASTNode.QUALIFIED_TYPE:
-				buffer.append(((QualifiedType) type).getName().getFullyQualifiedName());
+				QualifiedType qualifiedType = (QualifiedType)type;
+				getFullyQualifiedName(qualifiedType.getQualifier(), buffer);
+				buffer.append("."); //$NON-NLS-1$
+				buffer.append(qualifiedType.getName().getFullyQualifiedName());
 				break;
 			case ASTNode.SIMPLE_TYPE:
 				buffer.append(((SimpleType) type).getName().getFullyQualifiedName());
@@ -1339,6 +1337,10 @@ public class Util {
 					buffer.append(" super "); //$NON-NLS-1$
 				}
 				getFullyQualifiedName(bound, buffer);
+				break;
+			case ASTNode.NAME_QUALIFIED_TYPE:
+				NameQualifiedType nameQualifiedType = (NameQualifiedType)type;
+				buffer.append(nameQualifiedType.getQualifier().toString() + '.' + nameQualifiedType.getName().toString());
 				break;
 		}
 	}
@@ -1386,8 +1388,7 @@ public class Util {
 			if (!(type instanceof IType))
 				return null;
 			IInitializer[] initializers = ((IType) type).getInitializers();
-			for (int i = 0; i < initializers.length; i++) {
-				IInitializer initializer = initializers[i];
+			for (IInitializer initializer : initializers) {
 				ISourceRange sourceRange = initializer.getSourceRange();
 				if (sourceRange != null) {
 					int initializerStart = sourceRange.getOffset();
@@ -1608,8 +1609,7 @@ public class Util {
 	public static int indexOfJavaLikeExtension(String fileName) {
 		int fileNameLength = fileName.length();
 		char[][] javaLikeExtensions = getJavaLikeExtensions();
-		extensions: for (int i = 0, length = javaLikeExtensions.length; i < length; i++) {
-			char[] extension = javaLikeExtensions[i];
+		extensions: for (char[] extension : javaLikeExtensions) {
 			int extensionLength = extension.length;
 			int extensionStart = fileNameLength - extensionLength;
 			int dotIndex = extensionStart - 1;
@@ -1740,7 +1740,7 @@ public class Util {
 	 * <li> it must include the <code>".class"</code> suffix
 	 * <li> its prefix must be a valid identifier
 	 * </ul>
-	 * </p>
+	 *
 	 * @param name the name of a .class file
 	 * @param sourceLevel the source level
 	 * @param complianceLevel the compliance level
@@ -1761,7 +1761,7 @@ public class Util {
 	 * <li> it must include the <code>".java"</code> suffix
 	 * <li> its prefix must be a valid identifier
 	 * </ul>
-	 * </p>
+	 *
 	 * @param name the name of a compilation unit
 	 * @param sourceLevel the source level
 	 * @param complianceLevel the compliance level
@@ -1910,9 +1910,7 @@ public class Util {
 	}
 
 	public static ClassFileReader newClassFileReader(IResource resource) throws CoreException, ClassFormatException, IOException {
-		try (InputStream in = ((IFile) resource).getContents(true)) {
-			return ClassFileReader.read(in, resource.getFullPath().toString());
-		}
+		return ClassFileReader.read(((IFile) resource).readAllBytes(), resource.getFullPath().toString());
 	}
 
 	/**
@@ -2477,8 +2475,8 @@ public class Util {
 	public static String toString(char[][] c, char[] d) {
 		if (c == null) return new String(d);
 		StringBuilder sb = new StringBuilder();
-		for (int i = 0, max = c.length; i < max; ++i) {
-			sb.append(c[i]);
+		for (char[] n : c) {
+			sb.append(n);
 			sb.append('.');
 		}
 		sb.append(d);
@@ -2500,7 +2498,7 @@ public class Util {
 		int length = signature.length;
 		if (length <= 1)
 			return signature;
-		StringBuffer buffer = new StringBuffer(length);
+		StringBuilder buffer = new StringBuilder(length);
 		toUnresolvedTypeSignature(signature, 0, length, buffer);
 		int bufferLength = buffer.length();
 		char[] result = new char[bufferLength];
@@ -2508,7 +2506,7 @@ public class Util {
 		return result;
 	}
 
-	private static int toUnresolvedTypeSignature(char[] signature, int start, int length, StringBuffer buffer) {
+	private static int toUnresolvedTypeSignature(char[] signature, int start, int length, StringBuilder buffer) {
 		if (signature[start] == Signature.C_RESOLVED)
 			buffer.append(Signature.C_UNRESOLVED);
 		else
@@ -2534,7 +2532,7 @@ public class Util {
 		}
 		return length;
 	}
-	private static void appendArrayTypeSignature(char[] string, int start, StringBuffer buffer, boolean compact) {
+	private static void appendArrayTypeSignature(char[] string, int start, StringBuilder buffer, boolean compact) {
 		int length = string.length;
 		// need a minimum 2 char
 		if (start >= length - 1) {
@@ -2561,7 +2559,7 @@ public class Util {
 			buffer.append('[').append(']');
 		}
 	}
-	private static void appendClassTypeSignature(char[] string, int start, StringBuffer buffer, boolean compact) {
+	private static void appendClassTypeSignature(char[] string, int start, StringBuilder buffer, boolean compact) {
 		char c = string[start];
 		if (c != Signature.C_RESOLVED) {
 			return;
@@ -2598,7 +2596,7 @@ public class Util {
 			p++;
 		}
 	}
-	static void appendTypeSignature(char[] string, int start, StringBuffer buffer, boolean compact) {
+	static void appendTypeSignature(char[] string, int start, StringBuilder buffer, boolean compact) {
 		char c = string[start];
 		switch (c) {
 			case Signature.C_ARRAY :
@@ -2647,7 +2645,7 @@ public class Util {
 			return ""; //$NON-NLS-1$
 		}
 
-		StringBuffer buffer = new StringBuffer(methodSignature.length + 10);
+		StringBuilder buffer = new StringBuilder(methodSignature.length + 10);
 
 		// decode declaring class name
 		// it can be either an array signature or a type signature
@@ -2782,8 +2780,7 @@ public class Util {
 		if (fileName == null) return false;
 		int fileNameLength = fileName.length;
 		char[][] javaLikeExtensions = getJavaLikeExtensions();
-		extensions: for (int i = 0, length = javaLikeExtensions.length; i < length; i++) {
-			char[] extension = javaLikeExtensions[i];
+		extensions: for (char[] extension : javaLikeExtensions) {
 			int extensionLength = extension.length;
 			int extensionStart = fileNameLength - extensionLength;
 			if (extensionStart-1 < 0) continue;
@@ -2801,13 +2798,16 @@ public class Util {
 	 * Get all type arguments from an array of signatures.
 	 *
 	 * Example:
+	 * <pre>{@code
 	 * 	For following type X<Y<Z>,V<W>,U>.A<B> signatures is:
 	 * 	[
 	 * 		['L','X','<','L','Y','<','L','Z',';'>',';','L','V','<','L','W',';'>',';','L','U',';',>',';'],
 	 * 		['L','A','<','L','B',';','>',';']
 	 * 	]
-	 * 	@see #splitTypeLevelsSignature(String)
+	 * }</pre>
+	 * 	see {@link #splitTypeLevelsSignature(String)}
 	 * 	Then, this method returns:
+	 * <pre>{@code
 	 * 	[
 	 * 		[
 	 * 			['L','Y','<','L','Z',';'>',';'],
@@ -2818,6 +2818,7 @@ public class Util {
 	 * 			['L','B',';']
 	 * 		]
 	 * 	]
+	 * }</pre>
 	 *
 	 * @param typeSignatures Array of signatures (one per each type levels)
 	 * @throws IllegalArgumentException If one of provided signature is malformed
@@ -2865,11 +2866,10 @@ public class Util {
 					// values are heterogeneous, value kind is thus unknown
 					memberValuePair.valueKind = IMemberValuePair.K_UNKNOWN;
 				}
-				if (value instanceof Annotation) {
-					Annotation annotation = (Annotation) value;
+				if (value instanceof Annotation annotation) {
 					for (int j = 0; j < i; j++) {
 						if (annotation.equals(values[j])) {
-							annotation.occurrenceCount++;
+							annotation.incOccurrenceCount();
 						}
 					}
 				}
@@ -2957,13 +2957,16 @@ public class Util {
 	 * Split signatures of all levels  from a type unique key.
 	 *
 	 * Example:
+	 * <pre>{@code
 	 * 	For following type X<Y<Z>,V<W>,U>.A<B>, unique key is:
 	 * 	"LX<LY<LZ;>;LV<LW;>;LU;>.LA<LB;>;"
+	 * }</pre>
 	 *
 	 * 	The return splitted signatures array is:
-	 * 	[
+	 * <pre>{@code
 	 * 		['L','X','<','L','Y','<','L','Z',';'>',';','L','V','<','L','W',';'>',';','L','U','>',';'],
 	 * 		['L','A','<','L','B',';','>',';']
+	 * }</pre>
 	 *
 	 * @param typeSignature ParameterizedSourceType type signature
 	 * @return char[][] Array of signatures for each level of given unique key
@@ -3035,7 +3038,7 @@ public class Util {
 			throw new IllegalArgumentException(String.valueOf(methodSignature));
 		}
 
-		StringBuffer buffer = new StringBuffer(methodSignature.length + 10);
+		StringBuilder buffer = new StringBuilder(methodSignature.length + 10);
 
 		// selector
 		if (methodName != null) {
@@ -3062,7 +3065,7 @@ public class Util {
 		return result;
 	}
 
-	private static int appendTypeSignatureForAnchor(char[] string, int start, StringBuffer buffer, boolean isVarArgs) {
+	private static int appendTypeSignatureForAnchor(char[] string, int start, StringBuilder buffer, boolean isVarArgs) {
 		// need a minimum 1 char
 		if (start >= string.length) {
 			throw newIllegalArgumentException(string, start);
@@ -3140,7 +3143,7 @@ public class Util {
 		}
 	}
 
-	private static int appendTypeArgumentSignatureForAnchor(char[] string, int start, StringBuffer buffer) {
+	private static int appendTypeArgumentSignatureForAnchor(char[] string, int start, StringBuilder buffer) {
 		// need a minimum 1 char
 		if (start >= string.length) {
 			throw newIllegalArgumentException(string, start);
@@ -3157,7 +3160,7 @@ public class Util {
 				return appendTypeSignatureForAnchor(string, start, buffer, false);
 		}
 	}
-	private static int appendCaptureTypeSignatureForAnchor(char[] string, int start, StringBuffer buffer) {
+	private static int appendCaptureTypeSignatureForAnchor(char[] string, int start, StringBuilder buffer) {
 		// need a minimum 2 char
 		if (start >= string.length - 1) {
 			throw newIllegalArgumentException(string, start);
@@ -3168,7 +3171,7 @@ public class Util {
 		}
 		return appendTypeArgumentSignatureForAnchor(string, start + 1, buffer);
 	}
-	private static int appendArrayTypeSignatureForAnchor(char[] string, int start, StringBuffer buffer, boolean isVarArgs) {
+	private static int appendArrayTypeSignatureForAnchor(char[] string, int start, StringBuilder buffer, boolean isVarArgs) {
 		int length = string.length;
 		// need a minimum 2 char
 		if (start >= length - 1) {
@@ -3202,7 +3205,7 @@ public class Util {
 		}
 		return e;
 	}
-	private static int appendClassTypeSignatureForAnchor(char[] string, int start, StringBuffer buffer) {
+	private static int appendClassTypeSignatureForAnchor(char[] string, int start, StringBuilder buffer) {
 		// need a minimum 3 chars "Lx;"
 		if (start >= string.length - 2) {
 			throw newIllegalArgumentException(string, start);
@@ -3356,5 +3359,20 @@ public class Util {
 			method = methods[0];
 		}
 		return method;
+	}
+
+	public static String getEntryName(String zipfileName, ZipEntry entry) throws ZipException {
+		String entryName = entry.getName();
+		boolean zipSlip;
+		try {
+		zipSlip = !java.nio.file.Path.of(zipfileName, entryName).normalize()
+					.startsWith(java.nio.file.Path.of(zipfileName).normalize());
+		} catch (Exception pathException) { // for example java.nio.file.InvalidPathException: "Illegal char <<>"
+			return null; // illegal path on OS
+		}
+		if (zipSlip) {
+			throw new ZipException("Zip Slip Vulnerability: Bad zip entry: " + entryName + " in " + zipfileName); //$NON-NLS-1$ //$NON-NLS-2$
+		}
+		return entryName; // did not escape
 	}
 }

@@ -98,7 +98,7 @@ public class SingleTypeReference extends TypeReference {
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output){
+	public StringBuilder printExpression(int indent, StringBuilder output){
 		if (this.annotations != null && this.annotations[0] != null) {
 			printAnnotations(this.annotations[0], output);
 			output.append(' ');
@@ -115,7 +115,7 @@ public class SingleTypeReference extends TypeReference {
 		if (!memberType.isValidBinding()) {
 			hasError = true;
 			scope.problemReporter().invalidEnclosingType(this, memberType, enclosingType);
-			memberType = ((ReferenceBinding)memberType).closestMatch();
+			memberType = memberType.closestMatch();
 			if (memberType == null) {
 				return null;
 			}

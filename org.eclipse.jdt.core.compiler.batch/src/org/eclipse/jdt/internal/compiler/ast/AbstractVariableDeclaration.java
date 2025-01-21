@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2014 IBM Corporation and others.
+ * Copyright (c) 2000, 2023 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -18,6 +18,7 @@ package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.flow.FlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.JavaFeature;
 import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 import org.eclipse.jdt.internal.compiler.lookup.InferenceContext18;
 import org.eclipse.jdt.internal.compiler.lookup.InvocationSite;
@@ -87,7 +88,7 @@ public abstract class AbstractVariableDeclaration extends Statement implements I
 	}
 
 	@Override
-	public StringBuffer printStatement(int indent, StringBuffer output) {
+	public StringBuilder printStatement(int indent, StringBuilder output) {
 		printAsExpression(indent, output);
 		switch(getKind()) {
 			case ENUM_CONSTANT:
@@ -97,7 +98,7 @@ public abstract class AbstractVariableDeclaration extends Statement implements I
 		}
 	}
 
-	public StringBuffer printAsExpression(int indent, StringBuffer output) {
+	public StringBuilder printAsExpression(int indent, StringBuilder output) {
 		printIndent(indent, output);
 		printModifiers(this.modifiers, output);
 		if (this.annotations != null) {
@@ -143,5 +144,14 @@ public abstract class AbstractVariableDeclaration extends Statement implements I
 	@Override
 	public void setFieldIndex(int depth) {
 		// do nothing by default
+	}
+
+	/**
+	 * Returns true if this variable is an unnamed variable (_) and false otherwise.
+	 *
+	 * @param scope used to determine source level
+	 */
+	public boolean isUnnamed(BlockScope scope) {
+		return this.name.length == 1 && this.name[0] == '_' && JavaFeature.UNNAMMED_PATTERNS_AND_VARS.isSupported(scope.compilerOptions().sourceLevel, scope.compilerOptions().enablePreviewFeatures);
 	}
 }

@@ -15,20 +15,17 @@ package org.eclipse.jdt.core.tests.formatter.comment;
 
 import java.util.Iterator;
 import java.util.Map;
-
-import org.eclipse.text.edits.MalformedTreeException;
-import org.eclipse.text.edits.TextEdit;
-
 import org.eclipse.core.runtime.Assert;
-import org.eclipse.jface.text.BadLocationException;
-import org.eclipse.jface.text.Document;
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.jface.text.TextUtilities;
-
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.ToolFactory;
 import org.eclipse.jdt.core.formatter.CodeFormatter;
 import org.eclipse.jdt.core.formatter.DefaultCodeFormatterConstants;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.Document;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.TextUtilities;
+import org.eclipse.text.edits.MalformedTreeException;
+import org.eclipse.text.edits.TextEdit;
 
 /**
  * Utilities for the comment formatter.
@@ -115,7 +112,7 @@ public class CommentFormatterUtil {
 	 * @since 3.1
 	 */
 	private static int inferIndentationLevel(String reference, int tabSize) {
-		StringBuffer expanded= expandTabs(reference, tabSize);
+		StringBuilder expanded= expandTabs(reference, tabSize);
 
 		int spaceWidth, referenceWidth;
 		spaceWidth= 1;
@@ -135,8 +132,8 @@ public class CommentFormatterUtil {
 	 * @return the expanded string
 	 * @since 3.1
 	 */
-	private static StringBuffer expandTabs(String string, int tabSize) {
-		StringBuffer expanded= new StringBuffer();
+	private static StringBuilder expandTabs(String string, int tabSize) {
+		StringBuilder expanded= new StringBuilder();
 		for (int i= 0, n= string.length(), chars= 0; i < n; i++) {
 			char ch= string.charAt(i);
 			if (ch == '\t') {

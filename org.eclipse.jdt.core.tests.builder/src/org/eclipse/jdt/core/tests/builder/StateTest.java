@@ -24,7 +24,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
-
+import junit.framework.Test;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
@@ -46,8 +46,6 @@ import org.eclipse.jdt.internal.core.builder.ClasspathLocation;
 import org.eclipse.jdt.internal.core.builder.JavaBuilder;
 import org.eclipse.jdt.internal.core.builder.ReferenceCollection;
 import org.eclipse.jdt.internal.core.builder.State;
-
-import junit.framework.Test;
 
 public class StateTest extends BuilderTests {
 
@@ -317,11 +315,11 @@ public class StateTest extends BuilderTests {
 	}
 
 	private static String[] toStringArray(char[][][] qualifiedNameReferences) {
-		return Arrays.stream(qualifiedNameReferences).map(a -> CharOperation.toString(a)).toArray(String[]::new);
+		return Arrays.stream(qualifiedNameReferences).map(CharOperation::toString).toArray(String[]::new);
 	}
 
 	private static String[] toStringArray(char[][] qualifiedNameReferences) {
-		return Arrays.stream(qualifiedNameReferences).map(a -> CharOperation.charToString(a)).toArray(String[]::new);
+		return Arrays.stream(qualifiedNameReferences).map(CharOperation::charToString).toArray(String[]::new);
 	}
 
 	char[][][] getQualifiedNameReferences(ReferenceCollection collection) {

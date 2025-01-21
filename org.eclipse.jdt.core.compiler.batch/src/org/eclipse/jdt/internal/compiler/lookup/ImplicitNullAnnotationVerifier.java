@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
@@ -25,6 +24,7 @@ import org.eclipse.jdt.internal.compiler.ast.Argument;
 import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.NullAnnotationMatching;
 import org.eclipse.jdt.internal.compiler.ast.NullAnnotationMatching.CheckMode;
+import org.eclipse.jdt.internal.compiler.ast.RecordComponent;
 import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 
@@ -277,9 +277,26 @@ public class ImplicitNullAnnotationVerifier {
 					if (inheritedNullnessBits != 0) {
 						if (hasReturnNonNullDefault) {
 							// both inheritance and default: check for conflict?
-							if (shouldComplain && inheritedNullnessBits == TagBits.AnnotationNullable)
-								scope.problemReporter().conflictingNullAnnotations(currentMethod, ((MethodDeclaration) srcMethod).returnType, inheritedMethod);
-							// 	still use the inherited bits to avoid incompatibility
+							if (shouldComplain && inheritedNullnessBits == TagBits.AnnotationNullable) {
+								ASTNode location = null;
+								if (srcMethod instanceof MethodDeclaration) {
+									location = ((MethodDeclaration) srcMethod).returnType;
+								} else if (currentMethod instanceof SyntheticMethodBinding) {
+									SyntheticMethodBinding synth = (SyntheticMethodBinding) currentMethod;
+									switch (synth.purpose) {
+										case SyntheticMethodBinding.FieldReadAccess:
+											if (synth.recordComponentBinding != null) {
+												RecordComponent sourceRecordComponent = synth.sourceRecordComponent();
+												if (sourceRecordComponent != null)
+													location = sourceRecordComponent.type;
+											}
+									}
+								}
+								if (location == null)
+									location = (ASTNode) scope.referenceContext(); // fallback just in case
+								scope.problemReporter().conflictingNullAnnotations(currentMethod, location, inheritedMethod);
+								// 	still use the inherited bits to avoid incompatibility
+							}
 						}
 						if (inheritedNonNullnessInfos != null && srcMethod != null) {
 							recordDeferredInheritedNullness(scope, ((MethodDeclaration) srcMethod).returnType,
@@ -345,10 +362,10 @@ public class ImplicitNullAnnotationVerifier {
 			length = currentArguments.length;
 		if (useTypeAnnotations) // need to look for type annotations on all parameters:
 			length = currentMethod.parameters.length;
-		else if (inheritedMethod.parameterNonNullness != null)
-			length = inheritedMethod.parameterNonNullness.length;
-		else if (currentMethod.parameterNonNullness != null)
-			length = currentMethod.parameterNonNullness.length;
+		else if (inheritedMethod.parameterFlowBits != null)
+			length = inheritedMethod.parameterFlowBits.length;
+		else if (currentMethod.parameterFlowBits != null)
+			length = currentMethod.parameterFlowBits.length;
 
 		parameterLoop:
 		for (int i = 0; i < length; i++) {
@@ -493,8 +510,8 @@ public class ImplicitNullAnnotationVerifier {
 			}
 			return null;
 		}
-		return (method.parameterNonNullness == null)
-						? null : method.parameterNonNullness[i];
+		return (method.parameterFlowBits == null)
+						? null : method.getParameterNullness(i);
 	}
 
 	private long getReturnTypeNullnessTagBits(MethodBinding method, boolean useTypeAnnotations) {
@@ -525,9 +542,13 @@ public class ImplicitNullAnnotationVerifier {
 
 	/* record declared nullness of a parameter into the method and into the argument (if present). */
 	void recordArgNonNullness(MethodBinding method, int paramCount, int paramIdx, Argument currentArgument, Boolean nonNullNess) {
-		if (method.parameterNonNullness == null)
-			method.parameterNonNullness = new Boolean[paramCount];
-		method.parameterNonNullness[paramIdx] = nonNullNess;
+		if (method.parameterFlowBits == null)
+			method.parameterFlowBits = new byte[paramCount];
+		if (nonNullNess == Boolean.TRUE) {
+			method.parameterFlowBits[paramIdx] |= MethodBinding.PARAM_NONNULL;
+		} else if (nonNullNess == Boolean.FALSE) {
+			method.parameterFlowBits[paramIdx] |= MethodBinding.PARAM_NULLABLE;
+		}
 		if (currentArgument != null) {
 			currentArgument.binding.tagBits |= nonNullNess.booleanValue() ?
 					TagBits.AnnotationNonNull : TagBits.AnnotationNullable;

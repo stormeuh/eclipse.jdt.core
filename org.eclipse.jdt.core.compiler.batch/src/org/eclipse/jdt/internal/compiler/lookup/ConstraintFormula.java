@@ -48,9 +48,8 @@ abstract class ConstraintFormula extends ReductionResult {
 	}
 
 	public boolean applySubstitution(BoundSet solutionSet, InferenceVariable[] variables) {
-		for (int i=0; i<variables.length; i++) {
-			InferenceVariable variable = variables[i];
-			TypeBinding instantiation = solutionSet.getInstantiation(variables[i], null);
+		for (InferenceVariable variable : variables) {
+			TypeBinding instantiation = solutionSet.getInstantiation(variable, null);
 			if (instantiation == null)
 				return false;
 			this.right = this.right.substituteInferenceVariable(variable, instantiation);
@@ -59,7 +58,7 @@ abstract class ConstraintFormula extends ReductionResult {
 	}
 
 	// for debug toString():
-	protected void appendTypeName(StringBuffer buf, TypeBinding type) {
+	protected void appendTypeName(StringBuilder buf, TypeBinding type) {
 		if (type instanceof CaptureBinding18)
 			buf.append(type.toString()); // contains more info than readable name
 		else

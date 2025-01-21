@@ -32,7 +32,6 @@
 package com.sun.mirror.util;
 
 import com.sun.mirror.declaration.*;
-
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -174,7 +173,7 @@ class SourceOrderDeclScanner extends DeclarationScanner {
 	d.accept(pre);
 
 	SortedSet<Declaration> decls = new
-	    TreeSet<Declaration>(SourceOrderDeclScanner.comparator) ;
+	    TreeSet<>(SourceOrderDeclScanner.comparator) ;
 
 	for(TypeParameterDeclaration tpDecl: d.getFormalTypeParameters()) {
 	    decls.add(tpDecl);
@@ -203,7 +202,7 @@ class SourceOrderDeclScanner extends DeclarationScanner {
 	d.accept(pre);
 
 	SortedSet<Declaration> decls = new
-	    TreeSet<Declaration>(SourceOrderDeclScanner.comparator) ;
+	    TreeSet<>(SourceOrderDeclScanner.comparator) ;
 
 	for(TypeParameterDeclaration tpDecl: d.getFormalTypeParameters()) {
 	    decls.add(tpDecl);
@@ -236,7 +235,7 @@ class SourceOrderDeclScanner extends DeclarationScanner {
 	d.accept(pre);
 
 	SortedSet<Declaration> decls = new
-	    TreeSet<Declaration>(SourceOrderDeclScanner.comparator) ;
+	    TreeSet<>(SourceOrderDeclScanner.comparator) ;
 
 	for(TypeParameterDeclaration tpDecl: d.getFormalTypeParameters())
 	    decls.add(tpDecl);

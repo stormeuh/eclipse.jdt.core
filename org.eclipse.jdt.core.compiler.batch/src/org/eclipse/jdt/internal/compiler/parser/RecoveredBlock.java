@@ -14,11 +14,10 @@ package org.eclipse.jdt.internal.compiler.parser;
 
 import java.util.HashSet;
 import java.util.Set;
-
-import org.eclipse.jdt.core.compiler.*;
+import org.eclipse.jdt.core.compiler.CharOperation;
+import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.Argument;
-import org.eclipse.jdt.internal.compiler.ast.ASTNode;
 import org.eclipse.jdt.internal.compiler.ast.Block;
 import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
 import org.eclipse.jdt.internal.compiler.ast.ForeachStatement;
@@ -289,7 +288,7 @@ public void resetPendingModifiers() {
 }
 @Override
 public String toString(int tab) {
-	StringBuffer result = new StringBuffer(tabString(tab));
+	StringBuilder result = new StringBuilder(tabString(tab));
 	result.append("Recovered block:\n"); //$NON-NLS-1$
 	this.blockDeclaration.print(tab + 1, result);
 	if (this.statements != null) {
@@ -448,7 +447,7 @@ public RecoveredElement updateOnOpeningBrace(int braceStart, int braceEnd){
 @Override
 public void updateParseTree(){
 
-	updatedBlock(0, new HashSet<TypeDeclaration>());
+	updatedBlock(0, new HashSet<>());
 }
 /*
  * Record a field declaration

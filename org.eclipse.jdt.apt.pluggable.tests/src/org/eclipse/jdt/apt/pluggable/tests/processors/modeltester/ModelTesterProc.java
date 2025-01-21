@@ -20,7 +20,6 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -36,7 +35,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
-
 import org.eclipse.jdt.apt.pluggable.tests.ProcessorTestStatus;
 import org.eclipse.jdt.apt.pluggable.tests.annotations.LookAt;
 import org.eclipse.jdt.apt.pluggable.tests.annotations.ModelTestTrigger;
@@ -151,7 +149,7 @@ public class ModelTesterProc extends AbstractProcessor {
 	public void testFieldType(RoundEnvironment roundEnv, Element e, String arg0, String arg1)
 			throws Exception
 	{
-		Map<String, VariableElement> fields = new HashMap<String, VariableElement>();
+		Map<String, VariableElement> fields = new HashMap<>();
 		Iterable<? extends Element> elements;
 		// With this line uncommented, test would pass:
 		// elements = e.getEnclosedElements();
@@ -210,7 +208,7 @@ public class ModelTesterProc extends AbstractProcessor {
 	public void testMethodType(RoundEnvironment roundEnv, Element e, String arg0, String arg1)
 			throws Exception
 	{
-		Map<String, ExecutableElement> methods = new HashMap<String, ExecutableElement>();
+		Map<String, ExecutableElement> methods = new HashMap<>();
 		Iterable<? extends Element> elements;
 		// With this line uncommented, test would pass:
 		// elements = e.getEnclosedElements();

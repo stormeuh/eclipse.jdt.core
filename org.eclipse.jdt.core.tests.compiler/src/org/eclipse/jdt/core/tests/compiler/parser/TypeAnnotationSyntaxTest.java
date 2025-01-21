@@ -26,17 +26,7 @@ import java.util.Map;
 import junit.framework.Test;
 import org.eclipse.jdt.core.tests.util.CompilerTestSetup;
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.ast.Annotation;
-import org.eclipse.jdt.internal.compiler.ast.Argument;
-import org.eclipse.jdt.internal.compiler.ast.ArrayTypeReference;
-import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.MarkerAnnotation;
-import org.eclipse.jdt.internal.compiler.ast.MethodDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.NormalAnnotation;
-import org.eclipse.jdt.internal.compiler.ast.ParameterizedSingleTypeReference;
-import org.eclipse.jdt.internal.compiler.ast.SingleMemberAnnotation;
-import org.eclipse.jdt.internal.compiler.ast.SingleTypeReference;
-import org.eclipse.jdt.internal.compiler.ast.TypeReference;
+import org.eclipse.jdt.internal.compiler.ast.*;
 import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
 import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
@@ -128,7 +118,7 @@ public class TypeAnnotationSyntaxTest extends AbstractSyntaxTreeTest {
 				return;
 			}
 
-			StringBuffer buffer = new StringBuffer("[");
+			StringBuilder buffer = new StringBuilder("[");
 			for (int i = 0, max = tab.length; i < max; i += 2) {
 				if (i > 0) {
 					buffer.append(", ");

@@ -20,25 +20,24 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 import junit.framework.Test;
 import junit.framework.TestSuite;
-
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.apt.core.internal.AptPlugin;
 import org.eclipse.jdt.apt.core.internal.FactoryPluginManager;
 import org.eclipse.jdt.apt.core.internal.generatedfile.GeneratedSourceFolderManager;
 import org.eclipse.jdt.apt.core.internal.util.FactoryContainer;
+import org.eclipse.jdt.apt.core.internal.util.FactoryContainer.FactoryType;
 import org.eclipse.jdt.apt.core.internal.util.FactoryPath;
 import org.eclipse.jdt.apt.core.internal.util.FactoryPathUtil;
-import org.eclipse.jdt.apt.core.internal.util.FactoryContainer.FactoryType;
 import org.eclipse.jdt.apt.core.util.AptConfig;
 import org.eclipse.jdt.apt.core.util.AptPreferenceConstants;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.tests.util.Util;
+import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 
 public class PreferencesTests extends APTTestBase {
 
@@ -52,7 +51,7 @@ public class PreferencesTests extends APTTestBase {
 
 	public void testFactoryPathEncodingAndDecoding() throws Exception {
 		//encode
-		Map<FactoryContainer, FactoryPath.Attributes> factories = new LinkedHashMap<FactoryContainer, FactoryPath.Attributes>();
+		Map<FactoryContainer, FactoryPath.Attributes> factories = new LinkedHashMap<>();
 		FactoryContainer jarFactory1 = FactoryPathUtil.newExtJarFactoryContainer(new File(JAR_PATH_1)); //$NON-NLS-1$
 		FactoryPath.Attributes jarFPA1 = new FactoryPath.Attributes(true, false);
 		FactoryContainer jarFactory2 = FactoryPathUtil.newExtJarFactoryContainer(new File(JAR_PATH_2)); //$NON-NLS-1$
@@ -144,7 +143,7 @@ public class PreferencesTests extends APTTestBase {
 		assertFalse(AptConfig.isEnabled(null));
 
 		// processorOptions
-		Map<String, String> wkspOpts = new HashMap<String, String>(3);
+		Map<String, String> wkspOpts = new HashMap<>(3);
 		wkspOpts.put("b", "bVal");
 		wkspOpts.put("another option", "and\\more \"punctuation!\"");
 		AptConfig.setProcessorOptions(wkspOpts, null);
@@ -152,7 +151,7 @@ public class PreferencesTests extends APTTestBase {
 		assertTrue("getRawProcessorOptions() should return the values set in setProcessorOptions()",
 				wkspOpts.equals(retrievedWkspOpts));
 
-		Map<String, String> projOpts = new HashMap<String, String>(3);
+		Map<String, String> projOpts = new HashMap<>(3);
 		projOpts.put("a", "aVal");
 		projOpts.put("with spaces", "value also has spaces");
 		projOpts.put("foo", "bar");
@@ -220,10 +219,10 @@ public class PreferencesTests extends APTTestBase {
 		assertTrue(sourcepath.length() > 0);
 
 		String target = options.get("-target");
-		assertEquals(target, "1.5");
+		assertEquals(target, CompilerOptions.getFirstSupportedJavaVersion());
 
 		String source = options.get("-source");
-		assertEquals(source, "1.5");
+		assertEquals(source, CompilerOptions.getFirstSupportedJavaVersion());
 
 		String bindir = options.get("-d");
 		assertNotNull(bindir);
@@ -264,7 +263,7 @@ public class PreferencesTests extends APTTestBase {
 	public void testConfigGenSrcDir() throws Exception {
 
 		final String projectName = "ConfigTestProj";
-		IPath projectPath = env.addProject( projectName, "1.5" );
+		IPath projectPath = env.addProject( projectName, CompilerOptions.getFirstSupportedJavaVersion() );
 		env.addExternalJars( projectPath, Util.getJavaClassLibs() );
 		final IJavaProject javaProj = env.getJavaProject(projectName);
 		// APT is not enabled

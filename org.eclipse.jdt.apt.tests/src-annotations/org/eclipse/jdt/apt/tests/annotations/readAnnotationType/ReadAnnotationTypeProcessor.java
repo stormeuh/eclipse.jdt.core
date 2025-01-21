@@ -10,15 +10,12 @@
  *******************************************************************************/
 package org.eclipse.jdt.apt.tests.annotations.readAnnotationType;
 
-import java.io.PrintWriter;
-import java.util.Collection;
-import java.util.Set;
-
-import org.eclipse.jdt.apt.tests.annotations.BaseProcessor;
-
 import com.sun.mirror.apt.AnnotationProcessorEnvironment;
 import com.sun.mirror.declaration.AnnotationTypeDeclaration;
 import com.sun.mirror.declaration.Declaration;
+import java.util.Collection;
+import java.util.Set;
+import org.eclipse.jdt.apt.tests.annotations.BaseProcessor;
 
 public class ReadAnnotationTypeProcessor extends BaseProcessor {
 
@@ -31,7 +28,6 @@ public class ReadAnnotationTypeProcessor extends BaseProcessor {
     }
 
     public void process() {
-        PrintWriter writer = null;
         try
         {
             Collection<Declaration> declarations = _env.getDeclarationsAnnotatedWith(_annotationType);
@@ -41,12 +37,6 @@ public class ReadAnnotationTypeProcessor extends BaseProcessor {
         {
             e.printStackTrace();
             _env.getMessager().printError(e.getMessage());
-        } finally
-        {
-            if (writer != null)
-            {
-                writer.close();
-            }
         }
     }
 

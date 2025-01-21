@@ -20,10 +20,15 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.impl.*;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.codegen.BranchLabel;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
+import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 public class IfStatement extends Statement {
 
@@ -65,6 +70,11 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, Fl
 	// process the condition
 	FlowInfo conditionFlowInfo = this.condition.analyseCode(currentScope, flowContext, flowInfo);
 	int initialComplaintLevel = (flowInfo.reachMode() & FlowInfo.UNREACHABLE) != 0 ? Statement.COMPLAINED_FAKE_REACHABLE : Statement.NOT_COMPLAINED;
+
+	FieldBinding[] nullCheckedFields = null;
+	if (currentScope.compilerOptions().isAnnotationBasedResourceAnalysisEnabled && this.condition instanceof EqualExpression) { // simple checks only
+		nullCheckedFields = flowContext.nullCheckedFields(); // store before info expires
+	}
 
 	Constant cst = this.condition.optimizedBooleanConstant();
 	this.condition.checkNPEbyUnboxing(currentScope, flowContext, flowInfo);
@@ -141,6 +151,17 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, Fl
 		elseFlowInfo = this.elseStatement.analyseCode(currentScope, flowContext, elseFlowInfo);
 		if (!(this.elseStatement instanceof Block))
 			flowContext.expireNullCheckedFieldInfo();
+	}
+	if (nullCheckedFields != null) {
+		for (FieldBinding fieldBinding : nullCheckedFields) {
+			if (fieldBinding.closeTracker != null) {
+				LocalVariableBinding trackerBinding = fieldBinding.closeTracker.binding;
+				int closeStatus = thenFlowInfo.nullStatus(trackerBinding);
+				if (closeStatus == FlowInfo.NON_NULL || closeStatus == FlowInfo.POTENTIALLY_NON_NULL) {
+					elseFlowInfo.markNullStatus(trackerBinding, closeStatus);
+				}
+			}
+		}
 	}
 	// process AutoCloseable resources closed in only one branch:
 	currentScope.correlateTrackingVarsIfElse(thenFlowInfo, elseFlowInfo);
@@ -246,16 +267,7 @@ public void generateCode(BlockScope currentScope, CodeStream codeStream) {
 		this.elseStatement.generateCode(currentScope, codeStream);
 	} else {
 		// generate condition side-effects
-		if (this.condition.containsPatternVariable()) {
-			this.condition.generateOptimizedBoolean(
-				currentScope,
-				codeStream,
-				endifLabel,
-				null,
-				cst == Constant.NotAConstant);
-		} else {
-			this.condition.generateCode(currentScope, codeStream, false);
-		}
+		this.condition.generateCode(currentScope, codeStream, false);
 		codeStream.recordPositionsFrom(pc, this.sourceStart);
 	}
 	// May loose some local variable initializations : affecting the local variable attributes
@@ -272,7 +284,7 @@ public void generateCode(BlockScope currentScope, CodeStream codeStream) {
 
 
 @Override
-public StringBuffer printStatement(int indent, StringBuffer output) {
+public StringBuilder printStatement(int indent, StringBuilder output) {
 	printIndent(indent, output).append("if ("); //$NON-NLS-1$
 	this.condition.printExpression(0, output).append(")\n");	//$NON-NLS-1$
 	this.thenStatement.printStatement(indent + 2, output);
@@ -284,43 +296,28 @@ public StringBuffer printStatement(int indent, StringBuffer output) {
 	}
 	return output;
 }
-private void resolveIfStatement(BlockScope scope) {
-	TypeBinding type = this.condition.resolveTypeExpecting(scope, TypeBinding.BOOLEAN);
-	this.condition.computeConversion(scope, type, type);
-	if (this.thenStatement != null)
-		this.thenStatement.resolve(scope);
-	if (this.elseStatement != null)
-		this.elseStatement.resolve(scope);
+
+@Override
+public LocalVariableBinding[] bindingsWhenComplete() {
+	if (doesNotCompleteNormally())
+		return NO_VARIABLES;
+	if (this.thenStatement != null && this.thenStatement.doesNotCompleteNormally())
+		return this.condition.bindingsWhenFalse();
+	if (this.elseStatement != null && this.elseStatement.doesNotCompleteNormally())
+		return this.condition.bindingsWhenTrue();
+	return NO_VARIABLES;
 }
 @Override
 public void resolve(BlockScope scope) {
-	if (containsPatternVariable()) {
-		this.condition.collectPatternVariablesToScope(null, scope);
-		LocalVariableBinding[] patternVariablesInTrueScope = this.condition.getPatternVariablesWhenTrue();
-		LocalVariableBinding[] patternVariablesInFalseScope = this.condition.getPatternVariablesWhenFalse();
-		TypeBinding type = this.condition.resolveTypeExpecting(scope, TypeBinding.BOOLEAN);
-		this.condition.computeConversion(scope, type, type);
+	TypeBinding type = this.condition.resolveTypeExpecting(scope, TypeBinding.BOOLEAN);
+	this.condition.computeConversion(scope, type, type);
 
-		if (this.thenStatement != null) {
-			this.thenStatement.resolveWithPatternVariablesInScope(patternVariablesInTrueScope, scope);
-		}
-		if (this.elseStatement != null) {
-			this.elseStatement.resolveWithPatternVariablesInScope(patternVariablesInFalseScope, scope);
-		}
-		if (this.thenStatement != null)
-			this.thenStatement.promotePatternVariablesIfApplicable(patternVariablesInFalseScope,
-				this.thenStatement::doesNotCompleteNormally);
-		if (this.elseStatement != null)
-			this.elseStatement.promotePatternVariablesIfApplicable(patternVariablesInTrueScope,
-					this.elseStatement::doesNotCompleteNormally);
-	} else {
-		resolveIfStatement(scope);
+	if (this.thenStatement != null) {
+		this.thenStatement.resolveWithBindings(this.condition.bindingsWhenTrue(), scope);
 	}
-}
-
-@Override
-public boolean containsPatternVariable() {
-	return this.condition.containsPatternVariable();
+	if (this.elseStatement != null) {
+		this.elseStatement.resolveWithBindings(this.condition.bindingsWhenFalse(), scope);
+	}
 }
 
 @Override

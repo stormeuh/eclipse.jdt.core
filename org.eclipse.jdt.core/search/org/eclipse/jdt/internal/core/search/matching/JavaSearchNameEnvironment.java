@@ -18,14 +18,12 @@ import static org.eclipse.jdt.internal.core.JavaModelManager.trace;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -99,7 +97,7 @@ public JavaSearchNameEnvironment(IJavaProject javaProject, org.eclipse.jdt.core.
 
 	// if there are working copies, we need to index their packages too
 	if(this.workingCopies.size() > 0) {
-		Optional<ClasspathLocation> firstSrcLocation = this.locationSet.stream().filter(cp -> cp instanceof ClasspathSourceDirectory).findFirst();
+		Optional<ClasspathLocation> firstSrcLocation = this.locationSet.stream().filter(ClasspathSourceDirectory.class::isInstance).findFirst();
 		if(!firstSrcLocation.isPresent()) {
 			/*
 			 * Specifying working copies but not providing a project with a source folder is not supported by the current implementation.
@@ -206,7 +204,7 @@ private LinkedHashSet<ClasspathLocation> computeClasspathLocations(JavaProject j
 		}
 	}
 
-	LinkedHashSet<ClasspathLocation> locations = new LinkedHashSet<ClasspathLocation>();
+	LinkedHashSet<ClasspathLocation> locations = new LinkedHashSet<>();
 	int length = roots.length;
 	JavaModelManager manager = JavaModelManager.getJavaModelManager();
 	for (int i = 0; i < length; i++) {
@@ -284,7 +282,7 @@ private ClasspathLocation mapToClassPathLocation(JavaModelManager manager, Packa
 					ClasspathLocation.forJrtSystem(path.toOSString(), rawClasspathEntry.getAccessRuleSet(), null, compliance) :
 					ClasspathLocation.forLibrary(manager.getZipFile(path), rawClasspathEntry.getAccessRuleSet(), rawClasspathEntry.isModular(), compliance) ;
 		} else {
-			Object target = JavaModel.getTarget(path, true);
+			Object target = JavaModel.getTarget(root, true);
 			if (target != null) {
 				if (root.getKind() == IPackageFragmentRoot.K_SOURCE) {
 					cp = new ClasspathSourceDirectory((IContainer)target, root.fullExclusionPatternChars(), root.fullInclusionPatternChars());
@@ -572,17 +570,16 @@ public IModule getModule(char[] moduleName) {
 public char[][] getAllAutomaticModules() {
 	if (this.moduleLocations == null || this.moduleLocations.size() == 0)
 		return CharOperation.NO_CHAR_CHAR;
-	Set<char[]> set = this.moduleLocations.values().stream().map(e -> e.getModule()).filter(m -> m != null && m.isAutomatic())
-			.map(m -> m.name()).collect(Collectors.toSet());
+	Set<char[]> set = this.moduleLocations.values().stream().map(ClasspathLocation::getModule).filter(m -> m != null && m.isAutomatic())
+			.map(IModule::name).collect(Collectors.toSet());
 	return set.toArray(new char[set.size()][]);
 }
 
 public static INameEnvironment createWithReferencedProjects(IJavaProject javaProject, List<IJavaProject> referencedProjects, org.eclipse.jdt.core.ICompilationUnit[] copies) {
 	JavaSearchNameEnvironment result = new JavaSearchNameEnvironment(javaProject, copies);
 
-	Iterator<IJavaProject> next = referencedProjects.iterator();
-	while (next.hasNext()) {
-		result.addProjectClassPath((JavaProject)next.next(), true);
+	for (IJavaProject referencedProject : referencedProjects) {
+		result.addProjectClassPath((JavaProject)referencedProject, true);
 	}
 	return result;
 }

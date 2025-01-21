@@ -13,9 +13,10 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.formatter;
 
-import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameCOMMENT_LINE;
 import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameCOMMENT_BLOCK;
 import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameCOMMENT_JAVADOC;
+import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameCOMMENT_LINE;
+import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameCOMMENT_MARKDOWN;
 import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameNotAToken;
 import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameStringLiteral;
 import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameTextBlock;
@@ -24,7 +25,6 @@ import static org.eclipse.jdt.internal.compiler.parser.TerminalTokens.TokenNameW
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
 import org.eclipse.jdt.internal.formatter.Token.WrapMode;
 import org.eclipse.jdt.internal.formatter.Token.WrapPolicy;
@@ -43,8 +43,8 @@ public class TextEditsBuilder extends TokenTraverser {
 	private final DefaultCodeFormatterOptions options;
 	private final StringBuilder buffer;
 
-	private final List<Token> stringLiteralsInLine = new ArrayList<Token>();
-	private final List<TextEdit> edits = new ArrayList<TextEdit>();
+	private final List<Token> stringLiteralsInLine = new ArrayList<>();
+	private final List<TextEdit> edits = new ArrayList<>();
 
 	private final List<IRegion> regions;
 	private int currentRegion = 0;
@@ -80,7 +80,7 @@ public class TextEditsBuilder extends TokenTraverser {
 
 	private List<IRegion> adaptRegions(List<IRegion> givenRegions) {
 		// make sure regions don't begin or end inside multiline comments
-		ArrayList<IRegion> result = new ArrayList<IRegion>();
+		ArrayList<IRegion> result = new ArrayList<>();
 		IRegion previous = null;
 		for (IRegion region : givenRegions) {
 			int start = region.getOffset();
@@ -120,6 +120,12 @@ public class TextEditsBuilder extends TokenTraverser {
 	protected boolean token(Token token, int index) {
 
 		bufferWhitespaceBefore(token, index);
+
+		if (token.tokenType == TokenNameCOMMENT_MARKDOWN) {
+			flushBuffer(token.originalStart);
+			this.counter = token.originalEnd + 1;
+			return true; // don't touch markdown format for now.
+		}
 
 		List<Token> structure = token.getInternalStructure();
 		if (token.tokenType == TokenNameCOMMENT_LINE) {

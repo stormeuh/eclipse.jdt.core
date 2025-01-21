@@ -38,7 +38,6 @@ import java.util.Locale;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticListener;
 import javax.tools.JavaCompiler;
@@ -46,7 +45,6 @@ import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
-
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Platform;
 
@@ -75,10 +73,10 @@ public class BatchTestUtils {
 	private static File _tmpGenDir;
 
 	public static final class DiagnosticReport<S> implements DiagnosticListener<S> {
-		public StringBuffer buffer;
+		public StringBuilder buffer;
 		private final List<Diagnostic<? extends S>> diagnostics = new ArrayList<>();
 		DiagnosticReport() {
-			this.buffer = new StringBuffer();
+			this.buffer = new StringBuilder();
 		}
 		public void report(Diagnostic<? extends S> diagnostic) {
 			diagnostics.add(diagnostic);
@@ -106,7 +104,7 @@ public class BatchTestUtils {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(diagnostics, Locale.getDefault(), Charset.defaultCharset());
 
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		files.add(inputFile);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
@@ -157,7 +155,7 @@ public class BatchTestUtils {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 		Iterable<? extends File> location = manager.getLocation(StandardLocation.CLASS_PATH);
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		findFilesUnder(targetFolder, files);
 		files.sort(new Comparator<File>() {
 			@Override
@@ -235,7 +233,7 @@ public class BatchTestUtils {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		findFilesUnder(targetFolder, files);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
@@ -273,7 +271,7 @@ public class BatchTestUtils {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 		Iterable<? extends File> location = manager.getLocation(StandardLocation.CLASS_PATH);
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		findFilesUnder(targetFolder, files);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 		StringWriter stringWriter = new StringWriter();
@@ -330,7 +328,7 @@ public class BatchTestUtils {
 	 * @param compiler the system compiler or Eclipse compiler
 	 * @param options will be passed to the compiler
 	 * @param targetFolder the folder to compile
-	 * @param errors a StringWriter into which compiler output will be written
+	 * @param diagnosticListener a DiagnosticListener into which compiler output will be written
 	 * @return true if the compilation was successful
 	 */
 	public static boolean compileTreeWithErrors(
@@ -359,7 +357,7 @@ public class BatchTestUtils {
 		StandardJavaFileManager manager = compiler.getStandardFileManager(null, Locale.getDefault(), Charset.defaultCharset());
 
 		// create new list containing inputfile
-		List<File> files = new ArrayList<File>();
+		List<File> files = new ArrayList<>();
 		findFilesUnder(targetFolder, files);
 		Iterable<? extends JavaFileObject> units = manager.getJavaFileObjectsFromFiles(files);
 
@@ -391,8 +389,8 @@ public class BatchTestUtils {
 	/**
 	 * Recursively collect all the files under some root.  Ignore directories named "CVS".
 	 * Used when compiling multiple source files.
-	 * @param files a List<File> to which all the files found will be added
-	 * @return the set of Files under a root folder.
+	 * @param rootFolder a {@code List<File>} to which all the files found will be added
+	 * @param files the set of Files under a root folder to return.
 	 */
 	public static void findFilesUnder(File rootFolder, List<File> files) {
 		for (File child : rootFolder.listFiles()) {
@@ -559,18 +557,12 @@ public class BatchTestUtils {
 	public static byte[] read(java.io.File file) throws java.io.IOException {
 		int fileLength;
 		byte[] fileBytes = new byte[fileLength = (int) file.length()];
-		java.io.FileInputStream stream = null;
-		try {
-			stream = new java.io.FileInputStream(file);
+		try (java.io.FileInputStream stream = new java.io.FileInputStream(file)) {
 			int bytesRead = 0;
 			int lastReadSize = 0;
 			while ((lastReadSize != -1) && (bytesRead != fileLength)) {
 				lastReadSize = stream.read(fileBytes, bytesRead, fileLength - bytesRead);
 				bytesRead += lastReadSize;
-			}
-		} finally {
-			if (stream != null) {
-				stream.close();
 			}
 		}
 		return fileBytes;
@@ -591,7 +583,7 @@ public class BatchTestUtils {
 	 *
 	 * @param src
 	 *            the full path to the resource location.
-	 * @param destFolder
+	 * @param dest
 	 *            the full path to the destination location.
 	 */
 	public static void copyResource(File src, File dest) throws IOException {
@@ -623,15 +615,9 @@ public class BatchTestUtils {
 			}
 		}
 		// write bytes to dest
-		FileOutputStream out = null;
-		try {
-			out = new FileOutputStream(dest);
+		try (FileOutputStream out = new FileOutputStream(dest)) {
 			out.write(srcBytes);
 			out.flush();
-		} finally {
-			if (out != null) {
-				out.close();
-			}
 		}
 	}
 
@@ -665,7 +651,7 @@ public class BatchTestUtils {
 	 * named "CVS" will be ignored.
 	 * @param resourceFolderName the name of the source folder, relative to
 	 * <code>[plugin-root]/resources</code>
-	 * @param the absolute path of the destination folder
+	 * @param destFolder the absolute path of the destination folder
 	 */
 	public static void copyResources(String resourceFolderName, File destFolder) throws IOException {
 		File resDir = new File(getPluginDirectoryPath(), RESOURCES_DIR);

@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.core.search.matching;
 
 import java.io.IOException;
-
 import org.eclipse.jdt.core.search.SearchPattern;
 import org.eclipse.jdt.internal.core.index.EntryResult;
 import org.eclipse.jdt.internal.core.index.Index;
@@ -37,7 +36,7 @@ public SearchPattern getBlankPattern() {
 	return new SecondaryTypeDeclarationPattern(R_EXACT_MATCH | R_CASE_SENSITIVE);
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	output.append("Secondary"); //$NON-NLS-1$
 	return super.print(output);
 }

@@ -22,7 +22,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -38,7 +37,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
-
 import org.eclipse.jdt.apt.pluggable.tests.ModelTests;
 import org.eclipse.jdt.apt.pluggable.tests.ProcessorTestStatus;
 import org.eclipse.jdt.apt.pluggable.tests.annotations.LookAt;
@@ -167,7 +165,7 @@ public class ModelTester8Proc extends AbstractProcessor {
 	 * @see #TEST_METHOD_PARAMETERS_TYPE3_SOURCE
 	 */
 	public void testMethodParameters(RoundEnvironment roundEnv, Element e, String arg0, String arg1) throws Exception {
-		Map<String, ExecutableElement> methods = new HashMap<String, ExecutableElement>();
+		Map<String, ExecutableElement> methods = new HashMap<>();
 		Iterable<? extends Element> elements;
 
 		elements = roundEnv.getElementsAnnotatedWith(LookAt.class);
@@ -245,7 +243,7 @@ public class ModelTester8Proc extends AbstractProcessor {
 		DeclaredType myEnumType = (DeclaredType) guessReturnType;
 		TypeElement myEnumClass = (TypeElement) myEnumType.asElement();
 
-		List<ExecutableElement> ctors = new LinkedList<ExecutableElement>();
+		List<ExecutableElement> ctors = new LinkedList<>();
 		for (Element method : myEnumClass.getEnclosedElements()) {
 			if (method.getKind() == ElementKind.CONSTRUCTOR) {
 				ctors.add((ExecutableElement)method);

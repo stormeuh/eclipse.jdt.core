@@ -16,12 +16,11 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.tests.performance;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-
+import junit.framework.Test;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -34,23 +33,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IField;
-import org.eclipse.jdt.core.IInitializer;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaModel;
-import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.IMethod;
-import org.eclipse.jdt.core.IModuleDescription;
-import org.eclipse.jdt.core.IPackageFragment;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.IProblemRequestor;
-import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.WorkingCopyOwner;
+import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.search.IJavaSearchConstants;
@@ -67,8 +50,6 @@ import org.eclipse.jdt.internal.core.JavaElement;
 import org.eclipse.jdt.internal.core.JavaProject;
 import org.eclipse.jdt.internal.core.NameLookup;
 import org.eclipse.test.performance.Performance;
-
-import junit.framework.Test;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class FullSourceWorkspaceModelTests extends FullSourceWorkspaceTests implements IJavaSearchConstants {
@@ -203,7 +184,7 @@ private void setUpBigProject() throws CoreException, IOException {
 				"	}\n" +
 				"}\n" +
 				"class TestSecondary {}\n";
-			file.create(new ByteArrayInputStream(content.getBytes()), true, null);
+			file.create(content.getBytes(), true, false, null);
 		}
 		WORKING_COPY = (ICompilationUnit)JavaCore.create(file);
 		System.out.println("("+(System.currentTimeMillis()-start)+"ms)");
@@ -337,7 +318,7 @@ protected void assertElementsEqual(String message, String expected, IJavaElement
  * @see org.eclipse.jdt.core.tests.model.AbstractJavaModelTests#assertElementsEqual(String, String, IJavaElement[], boolean)
  */
 protected void assertElementsEqual(String message, String expected, IJavaElement[] elements, boolean showResolvedInfo) {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	if (elements != null) {
 		for (int i = 0, length = elements.length; i < length; i++){
 			JavaElement element = (JavaElement)elements[i];
@@ -760,7 +741,7 @@ public void testPerfReconcileBigFileWithSyntaxError() throws JavaModelException 
 		"	 \"}\\n\"" +
 		"  );\n" +
 		"}\n";
-	StringBuffer bigContents = new StringBuffer();
+	StringBuilder bigContents = new StringBuilder();
 	bigContents.append("public class BigCU {\n");
 	int fooIndex = 0;
 	while (fooIndex < 2000) { // add 2000 methods (so that source is close to 1MB)
@@ -811,7 +792,7 @@ public void testReconcileDuplicates() throws JavaModelException {
 	tagAsSummary("Reconcile editor change on file with lots of duplicates", false); // do NOT put in fingerprint
 
 	// build big file contents
-	StringBuffer contents = new StringBuffer();
+	StringBuilder contents = new StringBuilder();
 	contents.append("public class CUWithDuplicates {\n");
 	int fooIndex = 0;
 	while (fooIndex < 2000) { // add 2000 duplicate methods
@@ -861,7 +842,7 @@ public void testPerfDeleteLotsOfMembersAndReconcile() throws JavaModelException 
 	tagAsSummary("Reconcile editor change after deleting lots of members", false); // do NOT put in fingerprint
 
 	// build big file contents
-	StringBuffer contents = new StringBuffer();
+	StringBuilder contents = new StringBuilder();
 	contents.append("public class LotsOfMembers {\n");
 	int fooIndex = 0;
 	while (fooIndex < 15000) { // add 15000 methods

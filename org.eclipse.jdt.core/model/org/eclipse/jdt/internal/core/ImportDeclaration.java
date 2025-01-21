@@ -14,7 +14,10 @@
 package org.eclipse.jdt.internal.core;
 
 import org.eclipse.core.runtime.Assert;
-import org.eclipse.jdt.core.*;
+import org.eclipse.jdt.core.IImportDeclaration;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.ISourceRange;
+import org.eclipse.jdt.core.JavaModelException;
 
 /**
  * Handle for an import declaration. Info object is a ImportDeclarationElementInfo.
@@ -23,7 +26,7 @@ import org.eclipse.jdt.core.*;
 
 public class ImportDeclaration extends SourceRefElement implements IImportDeclaration {
 
-	protected String name;
+	protected final String name;
 	protected boolean isOnDemand;
 
 /**
@@ -65,16 +68,16 @@ public int getFlags() throws JavaModelException {
 	return info.getModifiers();
 }
 /**
- * @see JavaElement#getHandleMemento(StringBuffer)
+ * @see JavaElement#getHandleMemento(StringBuilder)
  * For import declarations, the handle delimiter is associated to the import container already
  */
 @Override
-protected void getHandleMemento(StringBuffer buff) {
+protected void getHandleMemento(StringBuilder buff) {
 	getParent().getHandleMemento(buff);
 	escapeMementoName(buff, getElementName());
-	if (this.occurrenceCount > 1) {
+	if (this.getOccurrenceCount() > 1) {
 		buff.append(JEM_COUNT);
-		buff.append(this.occurrenceCount);
+		buff.append(this.getOccurrenceCount());
 	}
 }
 /**
@@ -111,10 +114,10 @@ public String readableName() {
 	return null;
 }
 /**
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	buffer.append("import "); //$NON-NLS-1$
 	toStringName(buffer);

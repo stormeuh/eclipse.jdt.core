@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.core.search.matching;
 
 import java.io.IOException;
-
 import org.eclipse.jdt.core.BindingKey;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IMethod;
@@ -562,7 +561,7 @@ public EntryResult[] queryIn(Index index) throws IOException {
 	return index.query(getIndexCategories(), key, matchRule); // match rule is irrelevant when the key is null
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	if (this.findDeclarations) {
 		output.append(this.findReferences
 			? "ConstructorCombinedPattern: " //$NON-NLS-1$

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2021 IBM Corporation and others.
+ * Copyright (c) 2000, 2024 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -29,8 +29,8 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.CoreException;
@@ -40,24 +40,10 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.core.runtime.jobs.ISchedulingRule;
-import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IClasspathAttribute;
-import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IField;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaModelStatus;
-import org.eclipse.jdt.core.IJavaModelStatusConstants;
-import org.eclipse.jdt.core.IMember;
-import org.eclipse.jdt.core.IOpenable;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.IParent;
-import org.eclipse.jdt.core.ISourceRange;
-import org.eclipse.jdt.core.ISourceReference;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.WorkingCopyOwner;
+import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.internal.compiler.env.IElementInfo;
 import org.eclipse.jdt.internal.compiler.lookup.Binding;
 import org.eclipse.jdt.internal.core.util.MementoTokenizer;
 import org.eclipse.jdt.internal.core.util.Util;
@@ -101,7 +87,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	public static final char JEM_MODULE = '`';
 
 	/**
-	 * Before ')', '&' and '"' became the newest additions as delimiters, the former two
+	 * Before ')', {@code '&'} and '"' became the newest additions as delimiters, the former two
 	 * were allowed as part of element attributes and possibly stored. Trying to recreate
 	 * elements from such memento would cause undesirable results. Consider the following
 	 * valid project name: (abc)
@@ -112,7 +98,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * the following escape character is being introduced and all the new delimiters must
 	 * be escaped with this. So, a lambda expression would be written as: "=)..."
 	 *
-	 * @see JavaElement#appendEscapedDelimiter(StringBuffer, char)
+	 * @see JavaElement#appendEscapedDelimiter(StringBuilder, char)
 	 */
 	public static final char JEM_DELIMITER_ESCAPE = JEM_JAVAPROJECT;
 
@@ -121,12 +107,14 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * This element's parent, or <code>null</code> if this
 	 * element does not have a parent.
 	 */
-	private JavaElement parent;
+	private final JavaElement parent;
 
-	/* cached result */
-	private JavaProject project;
+	/** cached result */
+	private final JavaProject project;
+	/** cached result */
+	private int hashCode;
 
-	protected static final String[] NO_STRINGS = new String[0];
+	public static final String[] NO_STRINGS = new String[0];
 	protected static final JavaElement[] NO_ELEMENTS = new JavaElement[0];
 	protected static final Object NO_INFO = new Object();
 
@@ -143,7 +131,9 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 *		Java element type constants
 	 */
 	protected JavaElement(JavaElement parent) throws IllegalArgumentException {
-		this.setParent(parent);
+		this.parent = parent;
+		// cache:
+		this.project = parent == null ? null : parent.getJavaProject();
 	}
 	/**
 	 * @see IOpenable
@@ -158,7 +148,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	/*
 	 * Returns a new element info for this element.
 	 */
-	protected abstract Object createElementInfo();
+	protected abstract JavaElementInfo createElementInfo();
 	/**
 	 * Returns true if this handle represents the same Java element
 	 * as the given handle. By default, two handles represent the same
@@ -172,7 +162,6 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 */
 	@Override
 	public boolean equals(Object o) {
-
 		if (this == o) return true;
 
 		// Java model parent is null
@@ -186,14 +175,14 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	/**
 	 * @see #JEM_DELIMITER_ESCAPE
 	 */
-	protected void appendEscapedDelimiter(StringBuffer buffer, char delimiter) {
+	protected void appendEscapedDelimiter(StringBuilder buffer, char delimiter) {
 		buffer.append(JEM_DELIMITER_ESCAPE);
 		buffer.append(delimiter);
 	}
 	/*
 	 * Do not add new delimiters here
 	 */
-	protected void escapeMementoName(StringBuffer buffer, String mementoName) {
+	protected void escapeMementoName(StringBuilder buffer, String mementoName) {
 		MementoTokenizer.escape(buffer, mementoName);
 	}
 	/**
@@ -222,7 +211,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * Generates the element infos for this element, its ancestors (if they are not opened) and its children (if it is an Openable).
 	 * Puts the newly created element info in the given map.
 	 */
-	protected abstract void generateInfos(Object info, HashMap newElements, IProgressMonitor pm) throws JavaModelException;
+	protected abstract void generateInfos(IElementInfo info, Map<IJavaElement, IElementInfo> newElements, IProgressMonitor pm) throws JavaModelException;
 
 	/**
 	 * @see IJavaElement
@@ -242,8 +231,8 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 */
 	public IJavaElement[] getChildren() throws JavaModelException {
 		Object elementInfo = getElementInfo();
-		if (elementInfo instanceof JavaElementInfo) {
-			return ((JavaElementInfo)elementInfo).getChildren();
+		if (elementInfo instanceof JavaElementInfo ji) {
+			return ji.getChildren();
 		} else {
 			return NO_ELEMENTS;
 		}
@@ -285,7 +274,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * NOTE: BinaryType infos are NOT rooted under JavaElementInfo.
 	 * @exception JavaModelException if the element is not present or not accessible
 	 */
-	public Object getElementInfo() throws JavaModelException {
+	public IElementInfo getElementInfo() throws JavaModelException {
 		return getElementInfo(null);
 	}
 	/**
@@ -295,10 +284,10 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * NOTE: BinaryType infos are NOT rooted under JavaElementInfo.
 	 * @exception JavaModelException if the element is not present or not accessible
 	 */
-	public Object getElementInfo(IProgressMonitor monitor) throws JavaModelException {
+	public IElementInfo getElementInfo(IProgressMonitor monitor) throws JavaModelException {
 
 		JavaModelManager manager = JavaModelManager.getJavaModelManager();
-		Object info = manager.getInfo(this);
+		IElementInfo info = manager.getInfo(this);
 		if (info != null) return info;
 		return openWhenClosed(createElementInfo(), false, monitor);
 	}
@@ -335,11 +324,11 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * @see JavaElement#getHandleMemento()
 	 */
 	public String getHandleMemento(){
-		StringBuffer buff = new StringBuffer();
+		StringBuilder buff = new StringBuilder();
 		getHandleMemento(buff);
 		return buff.toString();
 	}
-	protected void getHandleMemento(StringBuffer buff) {
+	protected void getHandleMemento(StringBuilder buff) {
 		getParent().getHandleMemento(buff);
 		buff.append(getHandleMementoDelimiter());
 		escapeMementoName(buff, getElementName());
@@ -386,13 +375,6 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 		return this.parent;
 	}
 
-	protected void setParent(JavaElement parent) {
-		// invalidate caches:
-		this.project = parent==null?null:parent.getJavaProject();
-		// now the real task:
-		this.parent = parent;
-	}
-
 	@Override
 	public JavaElement getPrimaryElement() {
 		return getPrimaryElement(true);
@@ -433,7 +415,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 							SourceRefElement candidate = null;
 							do {
 								// check name range
-								range = ((IField)child).getNameRange();
+								range = child.getNameRange();
 								if (position <= range.getOffset() + range.getLength()) {
 									candidate = child;
 								} else {
@@ -513,15 +495,30 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	}
 
 	/**
-	 * Returns the hash code for this Java element. By default,
-	 * the hash code for an element is a combination of its name
-	 * and parent's hash code. Elements with other requirements must
-	 * override this method.
+	 * Returns the hash code for this Java element. By default, the hash code for an element is a combination of its
+	 * this{@link #getElementName()} and parent's hash code. Elements with other requirements must override
+	 * this{@link #calculateHashCode()}.
 	 */
 	@Override
-	public int hashCode() {
-		if (this.parent == null) return super.hashCode();
-		return Util.combineHashCodes(getElementName().hashCode(), this.parent.hashCode());
+	public final int hashCode() {
+		if (this.hashCode == 0) {
+			int h = calculateHashCode();
+			if (h == 0) {
+				h = 1;
+			}
+			this.hashCode = h;
+		}
+		return this.hashCode;
+	}
+
+	/** should not be needed but some implementations do have mutable member "occurrenceCount" **/
+	protected  void resetHashCode() {
+		this.hashCode = 0;
+	}
+
+	protected int calculateHashCode() {
+		return (this.parent == null) ? super.hashCode()
+				: Util.combineHashCodes(getElementName().hashCode(), this.parent.hashCode());
 	}
 	/**
 	 * Returns true if this element is an ancestor of the given element,
@@ -564,11 +561,11 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * Opens an <code>Openable</code> that is known to be closed (no check for <code>isOpen()</code>).
 	 * Returns the created element info.
 	 */
-	protected Object openWhenClosed(Object info, boolean forceAdd, IProgressMonitor monitor) throws JavaModelException {
+	protected IElementInfo openWhenClosed(IElementInfo info, boolean forceAdd, IProgressMonitor monitor) throws JavaModelException {
 		JavaModelManager manager = JavaModelManager.getJavaModelManager();
 		boolean hadTemporaryCache = manager.hasTemporaryCache();
 		try {
-			HashMap<IJavaElement, Object> newElements = manager.getTemporaryCache();
+			HashMap<IJavaElement, IElementInfo> newElements = manager.getTemporaryCache();
 			generateInfos(info, newElements, monitor);
 			if (info == null) {
 				info = newElements.get(this);
@@ -620,7 +617,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 * Debugging purposes
 	 */
 	public String toDebugString() {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		this.toStringInfo(0, buffer, NO_INFO, true/*show resolved info*/);
 		return buffer.toString();
 	}
@@ -629,14 +626,14 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 */
 	@Override
 	public String toString() {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		toString(0, buffer);
 		return buffer.toString();
 	}
 	/**
 	 *  Debugging purposes
 	 */
-	protected void toString(int tab, StringBuffer buffer) {
+	protected void toString(int tab, StringBuilder buffer) {
 		Object info = this.toStringInfo(tab, buffer);
 		if (tab == 0) {
 			toStringAncestors(buffer);
@@ -653,7 +650,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 *  Debugging purposes
 	 */
 	public String toStringWithAncestors(boolean showResolvedInfo) {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		this.toStringInfo(0, buffer, NO_INFO, showResolvedInfo);
 		toStringAncestors(buffer);
 		return buffer.toString();
@@ -661,7 +658,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	/**
 	 *  Debugging purposes
 	 */
-	protected void toStringAncestors(StringBuffer buffer) {
+	protected void toStringAncestors(StringBuilder buffer) {
 		JavaElement parentElement = getParent();
 		if (parentElement != null && parentElement.getParent() != null) {
 			buffer.append(" [in "); //$NON-NLS-1$
@@ -673,18 +670,18 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	/**
 	 *  Debugging purposes
 	 */
-	protected void toStringChildren(int tab, StringBuffer buffer, Object info) {
+	protected void toStringChildren(int tab, StringBuilder buffer, Object info) {
 		if (info == null || !(info instanceof JavaElementInfo)) return;
 		IJavaElement[] children = ((JavaElementInfo)info).getChildren();
-		for (int i = 0; i < children.length; i++) {
+		for (IJavaElement child : children) {
 			buffer.append("\n"); //$NON-NLS-1$
-			((JavaElement)children[i]).toString(tab + 1, buffer);
+			((JavaElement)child).toString(tab + 1, buffer);
 		}
 	}
 	/**
 	 *  Debugging purposes
 	 */
-	public Object toStringInfo(int tab, StringBuffer buffer) {
+	public Object toStringInfo(int tab, StringBuilder buffer) {
 		Object info = JavaModelManager.getJavaModelManager().peekAtInfo(this);
 		this.toStringInfo(tab, buffer, info, true/*show resolved info*/);
 		return info;
@@ -693,7 +690,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	 *  Debugging purposes
 	 * @param showResolvedInfo TODO
 	 */
-	protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+	protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 		buffer.append(tabString(tab));
 		toStringName(buffer);
 		if (info == null) {
@@ -703,7 +700,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 	/**
 	 *  Debugging purposes
 	 */
-	protected void toStringName(StringBuffer buffer) {
+	protected void toStringName(StringBuilder buffer) {
 		buffer.append(getElementName());
 	}
 
@@ -748,8 +745,7 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 		}
 
 		IClasspathAttribute[] extraAttributes= entry.getExtraAttributes();
-		for (int i= 0; i < extraAttributes.length; i++) {
-			IClasspathAttribute attrib= extraAttributes[i];
+		for (IClasspathAttribute attrib : extraAttributes) {
 			if (IClasspathAttribute.JAVADOC_LOCATION_ATTRIBUTE_NAME.equals(attrib.getName())) {
 				String value = attrib.getValue();
 				try {
@@ -802,28 +798,21 @@ public abstract class JavaElement extends PlatformObject implements IJavaElement
 		if (invalidURLs != null && invalidURLs.contains(url))
 				throw new JavaModelException(e, IJavaModelStatusConstants.CANNOT_RETRIEVE_ATTACHED_JAVADOC);
 
-		InputStream input = null;
 		try {
 			URLConnection connection = baseLoc.openConnection();
-			input = connection.getInputStream();
+			try (InputStream input = connection.getInputStream()) {
+				// do nothing, only try to read
+			}
 			if (validURLs == null) {
-				validURLs = new HashSet<String>(1);
+				validURLs = new HashSet<>(1);
 			}
 			validURLs.add(url);
 		} catch (Exception e1) {
 			if (invalidURLs == null) {
-				invalidURLs = new HashSet<String>(1);
+				invalidURLs = new HashSet<>(1);
 			}
 			invalidURLs.add(url);
 			throw new JavaModelException(e, IJavaModelStatusConstants.CANNOT_RETRIEVE_ATTACHED_JAVADOC);
-		} finally {
-			if (input != null) {
-				try {
-					input.close();
-				} catch (Exception e1) {
-					// Ignore
-				}
-			}
 		}
 	}
 

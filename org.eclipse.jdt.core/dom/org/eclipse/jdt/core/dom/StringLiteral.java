@@ -16,7 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.eclipse.jdt.core.compiler.InvalidInputException;
 import org.eclipse.jdt.internal.compiler.parser.Scanner;
 import org.eclipse.jdt.internal.compiler.parser.TerminalTokens;
@@ -258,7 +257,7 @@ public class StringLiteral extends Expression {
 			throw new IllegalArgumentException();
 		}
 		int len = value.length();
-		StringBuffer b = new StringBuffer(len + 2);
+		StringBuilder b = new StringBuilder(len + 2);
 
 		b.append("\""); // opening delimiter //$NON-NLS-1$
 		for (int i = 0; i < len; i++) {

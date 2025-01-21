@@ -41,22 +41,7 @@ import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.impl.Constant;
 import org.eclipse.jdt.internal.compiler.impl.IrritantSet;
-import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Binding;
-import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
-import org.eclipse.jdt.internal.compiler.lookup.InferenceContext18;
-import org.eclipse.jdt.internal.compiler.lookup.InvocationSite;
-import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
-import org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment;
-import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedGenericMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.PolymorphicMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Scope;
-import org.eclipse.jdt.internal.compiler.lookup.TagBits;
-import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
+import org.eclipse.jdt.internal.compiler.lookup.*;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 
 public class CastExpression extends Expression {
@@ -166,7 +151,7 @@ public static void checkNeedForEnclosingInstanceCast(BlockScope scope, Expressio
 }
 
 /**
- * Only complain for identity cast, since other type of casts may be useful: e.g.  ~((~(long) 0) << 32)  is different from: ~((~0) << 32)
+ * Only complain for identity cast, since other type of casts may be useful: e.g. {@code ~((~(long) 0) << 32)}  is different from: {@code ~((~0) << 32)}
  */
 public static void checkNeedForArgumentCast(BlockScope scope, int operator, int operatorSignature, Expression expression, int expressionTypeId) {
 	if (scope.compilerOptions().getSeverity(CompilerOptions.UnnecessaryTypeCheck) == ProblemSeverities.Ignore) return;
@@ -445,24 +430,21 @@ public static boolean checkUnsafeCast(Expression expression, Scope scope, TypeBi
 							ParameterizedTypeBinding paramCastType = (ParameterizedTypeBinding) castType;
 							TypeBinding[] castArguments = paramCastType.arguments;
 							int length = castArguments == null ? 0 : castArguments.length;
-							if ((paramCastType.tagBits & (TagBits.HasDirectWildcard|TagBits.HasTypeVariable)) != 0) {
-								// verify alternate cast type, substituting different type arguments
-								for (int i = 0; i < length; i++) {
-									if (castArguments[i].isUnboundWildcard())
-										continue;
-									TypeBinding[] alternateArguments;
-									// need to clone for each iteration to avoid env paramtype cache interference
-									System.arraycopy(paramCastType.arguments, 0, alternateArguments = new TypeBinding[length], 0, length);
-									alternateArguments[i] = TypeBinding.equalsEquals(paramCastType.arguments[i], scope.getJavaLangObject()) ? scope.getJavaLangBoolean() : scope.getJavaLangObject();
-									LookupEnvironment environment = scope.environment();
-									ParameterizedTypeBinding alternateCastType = environment.createParameterizedType((ReferenceBinding)castType.erasure(), alternateArguments, castType.enclosingType());
-									if (TypeBinding.equalsEquals(alternateCastType.findSuperTypeOriginatingFrom(expressionType), match)) {
-										expression.bits |= ASTNode.UnsafeCast;
-										break;
-									}
+							// verify alternate cast type, substituting different type arguments
+							for (int i = 0; i < length; i++) {
+								if (castArguments[i].isUnboundWildcard())
+									continue;
+								TypeBinding[] alternateArguments;
+								// need to clone for each iteration to avoid env paramtype cache interference
+								System.arraycopy(paramCastType.arguments, 0, alternateArguments = new TypeBinding[length], 0, length);
+								alternateArguments[i] = TypeBinding.equalsEquals(paramCastType.arguments[i], scope.getJavaLangObject()) ? scope.getJavaLangBoolean() : scope.getJavaLangObject();
+								LookupEnvironment environment = scope.environment();
+								ParameterizedTypeBinding alternateCastType = environment.createParameterizedType((ReferenceBinding)castType.erasure(), alternateArguments, castType.enclosingType());
+								if (TypeBinding.equalsEquals(alternateCastType.findSuperTypeOriginatingFrom(expressionType), match)) {
+									expression.bits |= ASTNode.UnsafeCast;
+									break;
 								}
 							}
-
 							// Type arguments added by subtypes of S and removed by supertypes of T don't need to be checked since the type arguments aren't specified by either S or T
 							return true;
 						} else {
@@ -593,7 +575,7 @@ public Constant optimizedBooleanConstant() {
 }
 
 @Override
-public StringBuffer printExpression(int indent, StringBuffer output) {
+public StringBuilder printExpression(int indent, StringBuilder output) {
 	int parenthesesCount = (this.bits & ASTNode.ParenthesizedMASK) >> ASTNode.ParenthesizedSHIFT;
 	String suffix = ""; //$NON-NLS-1$
 	for(int i = 0; i < parenthesesCount; i++) {

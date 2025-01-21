@@ -15,7 +15,6 @@ package org.eclipse.jdt.internal.compiler.classfmt;
 
 import java.net.URI;
 import java.util.Arrays;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.env.IBinaryAnnotation;
 import org.eclipse.jdt.internal.compiler.env.IBinaryModule;
@@ -261,8 +260,8 @@ public class ModuleInfo extends ClassFileStruct implements IBinaryModule {
 		this.annotations = annotationInfos;
 		this.tagBits = tagBits;
 		if (fullyInitialize) {
-			for (int i = 0, max = annotationInfos.length; i < max; i++) {
-				annotationInfos[i].initialize();
+			for (AnnotationInfo info : annotationInfos) {
+				info.initialize();
 			}
 		}
 	}
@@ -316,11 +315,11 @@ public class ModuleInfo extends ClassFileStruct implements IBinaryModule {
 		}
 		@Override
 		public String toString() {
-			StringBuffer buffer = new StringBuffer();
+			StringBuilder buffer = new StringBuilder();
 			toStringContent(buffer);
 			return buffer.toString();
 		}
-		protected void toStringContent(StringBuffer buffer) {
+		protected void toStringContent(StringBuilder buffer) {
 			buffer.append(this.packageName);
 			if (this.exportedToCount > 0) {
 				buffer.append(" to "); //$NON-NLS-1$
@@ -367,11 +366,11 @@ public class ModuleInfo extends ClassFileStruct implements IBinaryModule {
 	}
 	@Override
 	public String toString() {
-		StringBuffer buffer = new StringBuffer(getClass().getName());
+		StringBuilder buffer = new StringBuilder(getClass().getName());
 		toStringContent(buffer);
 		return buffer.toString();
 	}
-	protected void toStringContent(StringBuffer buffer) {
+	protected void toStringContent(StringBuilder buffer) {
 		buffer.append("\nmodule "); //$NON-NLS-1$
 		buffer.append(this.name).append(' ');
 		buffer.append('{').append('\n');

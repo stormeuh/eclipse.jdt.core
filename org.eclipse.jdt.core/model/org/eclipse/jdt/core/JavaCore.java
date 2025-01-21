@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2023 IBM Corporation and others.
+ * Copyright (c) 2000, 2024 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -118,45 +118,12 @@ import static org.eclipse.jdt.internal.core.JavaModelManager.trace;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipFile;
-
-import org.eclipse.core.resources.IContainer;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
-import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.IMarkerDelta;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IResourceChangeEvent;
-import org.eclipse.core.resources.IResourceChangeListener;
-import org.eclipse.core.resources.IWorkspace;
-import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.IWorkspaceRunnable;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IConfigurationElement;
-import org.eclipse.core.runtime.IExtension;
-import org.eclipse.core.runtime.IExtensionPoint;
-import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.OperationCanceledException;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.Plugin;
-import org.eclipse.core.runtime.QualifiedName;
-import org.eclipse.core.runtime.SubMonitor;
+import org.eclipse.core.resources.*;
+import org.eclipse.core.runtime.*;
 import org.eclipse.core.runtime.jobs.ISchedulingRule;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.compiler.IProblem;
@@ -174,22 +141,7 @@ import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.env.IModule.IModuleReference;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
-import org.eclipse.jdt.internal.core.BatchOperation;
-import org.eclipse.jdt.internal.core.BufferManager;
-import org.eclipse.jdt.internal.core.ClasspathAttribute;
-import org.eclipse.jdt.internal.core.ClasspathEntry;
-import org.eclipse.jdt.internal.core.ClasspathValidation;
-import org.eclipse.jdt.internal.core.CreateTypeHierarchyOperation;
-import org.eclipse.jdt.internal.core.DefaultWorkingCopyOwner;
-import org.eclipse.jdt.internal.core.ExternalFoldersManager;
-import org.eclipse.jdt.internal.core.JavaCorePreferenceInitializer;
-import org.eclipse.jdt.internal.core.JavaModel;
-import org.eclipse.jdt.internal.core.JavaModelManager;
-import org.eclipse.jdt.internal.core.JavaProject;
-import org.eclipse.jdt.internal.core.PackageFragmentRoot;
-import org.eclipse.jdt.internal.core.Region;
-import org.eclipse.jdt.internal.core.SetContainerOperation;
-import org.eclipse.jdt.internal.core.SetVariablesOperation;
+import org.eclipse.jdt.internal.core.*;
 import org.eclipse.jdt.internal.core.builder.JavaBuilder;
 import org.eclipse.jdt.internal.core.builder.ModuleInfoBuilder;
 import org.eclipse.jdt.internal.core.builder.State;
@@ -336,13 +288,12 @@ public final class JavaCore extends Plugin {
 	/**
 	 * Compiler option ID: Defining Target Java Platform.
 	 * <p>For binary compatibility reasons, .class files are tagged with a minimal required VM version.</p>
-	 * <p>Note that <code>"1.4"</code> and higher target versions require the compliance mode to be at least as high
+	 * <p>Note that <code>"1.8"</code> and higher target versions require the compliance mode to be at least as high
 	 *    as the target version. Usually, compliance, target, and source versions are set to the same values.</p>
-	 * <p><code>"cldc1.1"</code> requires the source version to be <code>"1.3"</code> and the compliance version to be <code>"1.4"</code> or lower.</p>
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.codegen.targetPlatform"</code></dd>
-	 * <dt>Possible values:</dt><dd><code>{ "1.1", "cldc1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "9", "10", "11" }</code></dd>
-	 * <dt>Default:</dt><dd><code>"1.2"</code></dd>
+	 * <dt>Possible values:</dt><dd><code>{ "1.8", "9", ..., {@link #latestSupportedJavaVersion()} }</code></dd>
+	 * <dt>Default:</dt><dd><code>"1.8"</code></dd>
 	 * </dl>
 	 * @category CompilerOptionID
 	 * @see #COMPILER_COMPLIANCE
@@ -352,20 +303,21 @@ public final class JavaCore extends Plugin {
 	public static final String COMPILER_CODEGEN_TARGET_PLATFORM = PLUGIN_ID + ".compiler.codegen.targetPlatform"; //$NON-NLS-1$
 	/**
 	 * Compiler option ID: Inline JSR Bytecode Instruction.
-	 * <p>When enabled, the compiler will no longer generate JSR instructions, but rather inline corresponding
-	 *    subroutine code sequences (mostly corresponding to try finally blocks). The generated code will thus
+	 * <p>When enabled, the compiler will no longer generate JSR instructions, but will rather inline the corresponding
+	 *    finally blocks). The generated code will thus
 	 *    get bigger, but will load faster on virtual machines since the verification process is then much simpler.</p>
 	 * <p>This mode is anticipating support for the Java Specification Request 202.</p>
-	 * <p>Note that JSR inlining is optional only for target platform lesser than 1.5. From 1.5 on, the JSR
-	 *    inlining is mandatory (also see related setting {@link #COMPILER_CODEGEN_TARGET_PLATFORM}).</p>
+	 * <p>Note that from 1.5 on, the JSR inlining is mandatory (also see related setting {@link #COMPILER_CODEGEN_TARGET_PLATFORM}).</p>
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.codegen.inlineJsrBytecode"</code></dd>
 	 * <dt>Possible values:</dt><dd><code>{ "enabled", "disabled" }</code></dd>
-	 * <dt>Default:</dt><dd><code>"disabled"</code></dd>
+	 * <dt>Default:</dt><dd><code>"enabled"</code></dd>
 	 * </dl>
 	 * @since 3.0
 	 * @category CompilerOptionID
+	 * @deprecated this option is implicitly enabled and can't be switched off anymore
 	 */
+	@Deprecated
 	public static final String COMPILER_CODEGEN_INLINE_JSR_BYTECODE = PLUGIN_ID + ".compiler.codegen.inlineJsrBytecode"; //$NON-NLS-1$
 	/**
 	 * Compiler option ID: Javadoc Comment Support.
@@ -502,6 +454,19 @@ public final class JavaCore extends Plugin {
 	 * @category CompilerOptionID
 	 */
 	public static final String COMPILER_PB_UNUSED_LOCAL = PLUGIN_ID + ".compiler.problem.unusedLocal"; //$NON-NLS-1$
+	/**
+	 * Compiler option ID: Reporting Unused Lambda Parameter.
+	 * <p>When enabled, the compiler will issue an error or a warning for unused lambda
+	 *    parameters (that is, lambda parameters never read from).</p>
+	 * <dl>
+	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.problem.unusedLambdaParameter"</code></dd>
+	 * <dt>Possible values:</dt><dd><code>{ "error", "warning", "info", "ignore" }</code></dd>
+	 * <dt>Default:</dt><dd><code>"warning"</code></dd>
+	 * </dl>
+	 * @category CompilerOptionID
+	 * @since 3.40
+	 */
+	public static final String COMPILER_PB_UNUSED_LAMBDA_PARAMETER = PLUGIN_ID + ".compiler.problem.unusedLambdaParameter"; //$NON-NLS-1$
 	/**
 	 * Compiler option ID: Reporting Unused Parameter.
 	 * <p>When enabled, the compiler will issue an error or a warning for unused method
@@ -644,7 +609,7 @@ public final class JavaCore extends Plugin {
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.problem.assertIdentifier"</code></dd>
 	 * <dt>Possible values:</dt><dd><code>{ "error", "warning", "info", "ignore" }</code></dd>
-	 * <dt>Default:</dt><dd><code>"warning"</code></dd>
+	 * <dt>Default:</dt><dd><code>"error"</code></dd>
 	 * </dl>
 	 * @since 2.0
 	 * @category CompilerOptionID
@@ -657,7 +622,7 @@ public final class JavaCore extends Plugin {
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.problem.enumIdentifier"</code></dd>
 	 * <dt>Possible values:</dt><dd><code>{ "error", "warning", "info", "ignore" }</code></dd>
-	 * <dt>Default:</dt><dd><code>"warning"</code></dd>
+	 * <dt>Default:</dt><dd><code>"error"</code></dd>
 	 * </dl>
 	 * @since 3.1
 	 * @category CompilerOptionID
@@ -1514,8 +1479,8 @@ public final class JavaCore extends Plugin {
 	/**
 	 * Compiler option ID: Reporting a resource that is not closed properly.
 	 * <p>When enabled, the compiler will issue an error or a warning if
-	 *    a local variable holds a value of type <code>java.lang.AutoCloseable</code> (compliance>=1.7)
-	 *    or a value of type <code>java.io.Closeable</code> (compliance<=1.6) and if
+	 *    a local variable holds a value of type <code>java.lang.AutoCloseable</code> (compliance&gt;=1.7)
+	 *    or a value of type <code>java.io.Closeable</code> (compliance&lt;=1.6) and if
 	 *    flow analysis shows that the method <code>close()</code> is not invoked locally on that value.</p>
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.problem.unclosedCloseable"</code></dd>
@@ -1530,7 +1495,7 @@ public final class JavaCore extends Plugin {
 	 * Compiler option ID: Reporting a resource that may not be closed properly.
 	 * <p>When enabled, the compiler will issue an error or a warning if
 	 *    a local variable holds a value of type <code>java.lang.AutoCloseable</code> (compliance>=1.7)
-	 *    or a value of type <code>java.io.Closeable</code> (compliance<=1.6) and if
+	 *    or a value of type <code>java.io.Closeable</code> (compliance&lt;=1.6) and if
 	 *    flow analysis shows that the method <code>close()</code> is
 	 *    not invoked locally on that value for all execution paths.</p>
 	 * <dl>
@@ -1557,6 +1522,116 @@ public final class JavaCore extends Plugin {
 	 * @category CompilerOptionID
 	 */
 	public static final String COMPILER_PB_EXPLICITLY_CLOSED_AUTOCLOSEABLE = PLUGIN_ID + ".compiler.problem.explicitlyClosedAutoCloseable"; //$NON-NLS-1$
+
+	/**
+	 * Compiler option ID: Enable the use of specific annotations for more precise analysis of resource leaks.
+	 * <p>When enabled, the compiler will respect annotations by the names specified in {@link #COMPILER_OWNING_ANNOTATION_NAME}
+	 * and {@link #COMPILER_NOTOWNING_ANNOTATION_NAME}</p>
+	 * <dl>
+	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.annotation.resourceanalysis"</code></dd>
+	 * <dt>Possible values:</dt><dd><code>{ "enabled", "disabled" }</code></dd>
+	 * <dt>Default:</dt><dd><code>"disabled"</code></dd>
+	 * </dl>
+	 * @since 3.37
+	 * @category CompilerOptionID
+	 */
+	public static final String COMPILER_ANNOTATION_RESOURCE_ANALYSIS = PLUGIN_ID + ".compiler.annotation.resourceanalysis"; //$NON-NLS-1$
+
+	/**
+	 * Compiler option ID: Name of annotation type for "owned" resource values.
+	 * <p>The annotation specified here should only be used on an element of type {@link AutoCloseable} or a subtype.
+	 *  It can be used in the following locations: </p>
+	 * <dl>
+	 * <dt>Method parameter</dt><dd>Signify that the receiving method is responsible for closing any resource value passed via this argument.
+	 * 	At the caller side, passing an unclosed resource into this parameter satisfies any responsibility for this resource.</dd>
+	 * <dt>Method</dt><dd>Signify that every caller is responsible for closing any resource values received as return from this method.
+	 * 	The method itself is entitled to return unclosed resources.</dd>
+	 * <dt>Field:</dt><dd>The enclosing class should implement {@link AutoCloseable}, and its {@link AutoCloseable#close()} method
+	 * 	should close each field thusly annotated.
+	 * 	Conversely, a constructor receiving an unclosed resource may satisfy its responsibility by assigning the resource
+	 * 	to a field marked with this annotation.</dd>
+	 * </dl>
+	 * <p>This option only has an effect if the option {@link #COMPILER_ANNOTATION_RESOURCE_ANALYSIS} is enabled.</p>
+	 * <dl>
+	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.annotation.owning"</code></dd>
+	 * <dt>Possible values:</dt><dd>A fully qualified name of an annotation declaration</dd>
+	 * <dt>Default:</dt><dd><code>"org.eclipse.jdt.annotation.Owning"</code></dd>
+	 * </dl>
+	 * @since 3.37
+	 * @category CompilerOptionID
+	 */
+	public static final String COMPILER_OWNING_ANNOTATION_NAME = PLUGIN_ID + ".compiler.annotation.owning"; //$NON-NLS-1$
+
+	/**
+	 * Compiler option ID: Name of annotation type for "not-owned" resource values.
+	 * 	This annotations is then inverse of {@link #COMPILER_OWNING_ANNOTATION_NAME}.
+	 * <p>The annotation specified here should only be used on an element of type {@link AutoCloseable} or a subtype.
+	 *  It can be used in the following locations: </p>
+	 * <dl>
+	 * <dt>Method parameter</dt><dd>Signify that passing a resource into this parameter does not affect the caller's responsibility
+	 * 	to close that resource. The receiving method has no obligations in this regard.</dd>
+	 * <dt>Method</dt><dd>Signify that returning a resource value from this method does not affect the responsibility to close.
+	 * 	Given that the method can not close the resource after returning, the resource should therefore be stored in a field,
+	 * 	for closing at a later point.</dd>
+	 * <dt>Field:</dt><dd>Storing a resource value in a field with this annotation does not affect responsibility to close.
+	 * 	Storing an unclosed resource does not satisfy the responsibility, reading from such field does not create
+	 * 	any responsibility.</dd>
+	 * </dl>
+	 * <p>This option only has an effect if the option {@link #COMPILER_ANNOTATION_RESOURCE_ANALYSIS} is enabled.</p>
+	 * <dl>
+	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.annotation.notowning"</code></dd>
+	 * <dt>Possible values:</dt><dd>A fully qualified name of an annotation declaration</dd>
+	 * <dt>Default:</dt><dd><code>"org.eclipse.jdt.annotation.NotOwning"</code></dd>
+	 * </dl>
+	 * @since 3.37
+	 * @category CompilerOptionID
+	 */
+	public static final String COMPILER_NOTOWNING_ANNOTATION_NAME = PLUGIN_ID + ".compiler.annotation.notowning"; //$NON-NLS-1$
+
+	/**
+	 * Compiler option ID: Reporting a resource that is not managed by recommended strategies.
+	 * <p>When enabled, the compiler will issue an error or a warning or an info if a value of type {@link AutoCloseable} or subtype
+	 * 	is managed in ways that impede static analysis.</p>
+	 * <p>The following recommendations apply:</p>
+	 * <ul>
+	 * <li>Any field of a resource type should be annotated as owning ({@link #COMPILER_OWNING_ANNOTATION_NAME}).</li>
+	 * <li>Any class declaring one or more fields annotated as owning should itself implement {@link AutoCloseable}.</li>
+	 * <li>Any class implementing {@link AutoCloseable} that declares one or more owned resource fields should implement
+	 * 	{@link AutoCloseable#close()} and ensure that each owned resource field is always closed when <code>close()</code> is executed.</li>
+	 * <li>A method returning a locally owned resource should be tagged as owning ({@link #COMPILER_OWNING_ANNOTATION_NAME}).</li>
+	 * </ul>
+	 * <p>This option only has an effect if the option {@link #COMPILER_ANNOTATION_RESOURCE_ANALYSIS} is enabled.</p>
+	 * <dl>
+	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.problem.insufficientResourceAnalysis"</code></dd>
+	 * <dt>Possible values:</dt><dd><code>{ "error", "warning", "info", "ignore" }</code></dd>
+	 * <dt>Default:</dt><dd><code>"warning"</code></dd>
+	 * </dl>
+	 * @since 3.37
+	 * @category CompilerOptionID
+	 */
+	public static final String COMPILER_PB_RECOMMENDED_RESOURCE_MANAGEMENT = PLUGIN_ID + ".compiler.problem.insufficientResourceAnalysis"; //$NON-NLS-1$
+
+	/**
+	 * Compiler option ID: Reporting when a method override incompatibly changes the owning contract.
+	 * <p>When enabled, the compiler will issue an error or a warning or an info if a method signature is incompatible
+	 *  with an overridden method from a super type in terms of resource ownership.</p>
+	 * <p>Incompatibility occurs if:</p>
+	 * <ul>
+	 * <li>A super parameter is tagged as owning ({@link #COMPILER_OWNING_ANNOTATION_NAME}) but the corresponding
+	 *  parameter of the current method does not repeat this annotation.</li>
+	 * <li>The current method is tagged as owning (affecting the method return), but an overridden super method does not
+	 *  have this annotation.</li>
+	 * </ul>
+	 * <p>This option only has an effect if the option {@link #COMPILER_ANNOTATION_RESOURCE_ANALYSIS} is enabled.</p>
+	 * <dl>
+	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.problem.incompatibleOwningContract"</code></dd>
+	 * <dt>Possible values:</dt><dd><code>{ "error", "warning", "info", "ignore" }</code></dd>
+	 * <dt>Default:</dt><dd><code>"warning"</code></dd>
+	 * </dl>
+	 * @since 3.37
+	 * @category CompilerOptionID
+	 */
+	public static final String COMPILER_PB_INCOMPATIBLE_OWNING_CONTRACT = PLUGIN_ID + ".compiler.problem.incompatibleOwningContract";  //$NON-NLS-1$
 
 	/**
 	 * Compiler option ID: Reporting a method invocation providing an argument of an unlikely type.
@@ -2112,8 +2187,8 @@ public final class JavaCore extends Plugin {
 	 *    set to the same version as the source level.</p>
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.source"</code></dd>
-	 * <dt>Possible values:</dt><dd><code>{ "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "9", "10", "11" }</code></dd>
-	 * <dt>Default:</dt><dd><code>"1.3"</code></dd>
+	 * <dt>Possible values:</dt><dd><code>{ "1.8", "9", ..., {@link #latestSupportedJavaVersion()} }</code></dd>
+	 * <dt>Default:</dt><dd><code>"1.8"</code></dd>
 	 * </dl>
 	 * @since 2.0
 	 * @category CompilerOptionID
@@ -2130,8 +2205,8 @@ public final class JavaCore extends Plugin {
 	 *    should match the compliance setting.</p>
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.compiler.compliance"</code></dd>
-	 * <dt>Possible values:</dt><dd><code>{ "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "9", "10", "11" }</code></dd>
-	 * <dt>Default:</dt><dd><code>"1.4"</code></dd>
+	 * <dt>Possible values:</dt><dd><code>{ "1.8", "9", ..., {@link #latestSupportedJavaVersion()} }</code></dd>
+	 * <dt>Default:</dt><dd><code>"1.8"</code></dd>
 	 * </dl>
 	 * @since 2.0
 	 * @category CompilerOptionID
@@ -2921,7 +2996,7 @@ public final class JavaCore extends Plugin {
 	 *    one of the proposed suffixes.</p>
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.codeComplete.staticFieldSuffixes"</code></dd>
-	 * <dt>Possible values:</dt><dd><code>{ "&lt;suffix&gt;[,&lt;suffix&gt;]*" }</code>< where <code>&lt;suffix&gt;</code> is a String without any wild-card</dd>
+	 * <dt>Possible values:</dt><dd>{@code  "<suffix>[,<suffix>]*" }&lt; where {@code <suffix> } is a String without any wild-card</dd>
 	 * <dt>Default:</dt><dd><code>""</code></dd>
 	 * </dl>
 	 * @since 2.1
@@ -2934,7 +3009,7 @@ public final class JavaCore extends Plugin {
 	 *    one of the proposed suffixes.</p>
 	 * <dl>
 	 * <dt>Option id:</dt><dd><code>"org.eclipse.jdt.core.codeComplete.staticFinalFieldSuffixes"</code></dd>
-	 * <dt>Possible values:</dt><dd><code>{ "&lt;suffix&gt;[,&lt;suffix&gt;]*" }</code>< where <code>&lt;suffix&gt;</code> is a String without any wild-card</dd>
+	 * <dt>Possible values:</dt><dd>{@code "<suffix>[<suffix>]*" }&lt; where {@code <suffix>} is a String without any wild-card</dd>
 	 * <dt>Default:</dt><dd><code>""</code></dd>
 	 * </dl>
 	 * @since 3.5
@@ -3196,13 +3271,50 @@ public final class JavaCore extends Plugin {
 	public static final String VERSION_21 = "21"; //$NON-NLS-1$
 	/**
 	 * Configurable option value: {@value}.
+	 * @since 3.38
+	 * @category OptionValue
+	 */
+	public static final String VERSION_22 = "22"; //$NON-NLS-1$
+	/**
+	 * Configurable option value: {@value}.
+	 * @since 3.38
+	 * @category OptionValue
+	 */
+	public static final String VERSION_23 = "23"; //$NON-NLS-1$
+	/**
+	 * Configurable option value: {@value}.
 	 * @since 3.4
 	 * @category OptionValue
 	 */
 	public static final String VERSION_CLDC_1_1 = "cldc1.1"; //$NON-NLS-1$
-	private static List<String> allVersions = Collections.unmodifiableList(Arrays.asList(VERSION_CLDC_1_1, VERSION_1_1, VERSION_1_2, VERSION_1_3, VERSION_1_4, VERSION_1_5,
+	private static final List<String> allVersions = Collections.unmodifiableList(Arrays.asList(VERSION_CLDC_1_1, VERSION_1_1, VERSION_1_2, VERSION_1_3, VERSION_1_4, VERSION_1_5,
 			VERSION_1_6, VERSION_1_7, VERSION_1_8, VERSION_9, VERSION_10, VERSION_11, VERSION_12, VERSION_13, VERSION_14, VERSION_15, VERSION_16, VERSION_17, VERSION_18,
-			VERSION_19, VERSION_20, VERSION_21));
+			VERSION_19, VERSION_20, VERSION_21, VERSION_22, VERSION_23));
+
+	/**
+	 * Unordered set of all Java source versions <b>not supported</b> by compiler anymore.
+	 * The values are from {@link JavaCore}{@code #VERSION_*}.
+	 */
+	private static final Set<String> UNSUPPORTED_VERSIONS = CompilerOptions.UNSUPPORTED_VERSIONS;
+
+	/**
+	 * Ordered set (from oldest to latest) of all Java source versions <b>supported</b> by compiler.
+	 * The values are from {@link JavaCore}{@code #VERSION_*}.
+	 */
+	private static final SortedSet<String> SUPPORTED_VERSIONS;
+	static {
+		Comparator<String> byVersion = Comparator.comparingDouble((String v) -> {
+			try {
+				return Double.parseDouble(v);
+			} catch (RuntimeException e) {
+				return 0;
+			}
+		}).thenComparing(Comparator.naturalOrder());
+		SortedSet<String> temp = new TreeSet<>(byVersion);
+		temp.addAll(allVersions);
+		temp.removeAll(UNSUPPORTED_VERSIONS);
+		SUPPORTED_VERSIONS = Collections.unmodifiableSortedSet(temp);
+	}
 
 	/**
 	 * Returns all {@link JavaCore}{@code #VERSION_*} levels in the order of their
@@ -3213,6 +3325,21 @@ public final class JavaCore extends Plugin {
 	 */
 	public static List<String> getAllVersions() {
 		return allVersions;
+	}
+
+	/**
+	 * Returns all Java source versions fully supported by Eclipse compiler in the order of their introduction. For
+	 * example, {@link JavaCore#VERSION_1_8} appears before {@link JavaCore#VERSION_10}.
+	 * <p>
+	 * Note, some not included older or newer Java versions might be known by Eclipse compiler internally but not
+	 * exposed via this API because compiler does not support these anymore (or yet).
+	 *
+	 * @return all Java source versions fully supported by Eclipse compiler
+	 * @see #isJavaSourceVersionSupportedByCompiler(String)
+	 * @since 3.39
+	 */
+	public static SortedSet<String> getAllJavaSourceVersionsSupportedByCompiler() {
+		return SUPPORTED_VERSIONS;
 	}
 
 	/**
@@ -3228,6 +3355,21 @@ public final class JavaCore extends Plugin {
 	 */
 	public static boolean isSupportedJavaVersion(String version) {
 		return CompilerOptions.versionToJdkLevel(version, false) > 0;
+	}
+
+	/**
+	 * Not all known Java versions are supported by Eclipse compiler. This method answers if the given Java source
+	 * version is fully supported.
+	 *
+	 * @return {@code true} if the given string represents Java language version is fully supported by Eclipse compiler
+	 * @see #getAllJavaSourceVersionsSupportedByCompiler()
+	 * @since 3.39
+	 */
+	public static boolean isJavaSourceVersionSupportedByCompiler(String version) {
+		if(version == null || version.isBlank()) {
+			return false;
+		}
+		return SUPPORTED_VERSIONS.contains(version);
 	}
 
 	/**
@@ -3489,8 +3631,7 @@ public final class JavaCore extends Plugin {
 			IContainer container,
 			int rootPathSegmentCounts,
 			ArrayList collector) {
-		for (int i = 0, max = nonJavaResources.length; i < max; i++) {
-			Object nonJavaResource = nonJavaResources[i];
+		for (Object nonJavaResource : nonJavaResources) {
 			if (nonJavaResource instanceof IFile) {
 				IFile file = (IFile) nonJavaResource;
 				IPath path = file.getFullPath().removeFirstSegments(rootPathSegmentCounts);
@@ -3864,10 +4005,9 @@ public final class JavaCore extends Plugin {
 		IExtensionPoint extension = Platform.getExtensionRegistry().getExtensionPoint(JavaCore.PLUGIN_ID, JavaModelManager.CPCONTAINER_INITIALIZER_EXTPOINT_ID);
 		if (extension != null) {
 			IExtension[] extensions =  extension.getExtensions();
-			for(int i = 0; i < extensions.length; i++){
-				IConfigurationElement [] configElements = extensions[i].getConfigurationElements();
-				for(int j = 0; j < configElements.length; j++){
-					IConfigurationElement configurationElement = configElements[j];
+			for (IExtension ext : extensions) {
+				IConfigurationElement [] configElements = ext.getConfigurationElements();
+				for (IConfigurationElement configurationElement : configElements) {
 					String initializerID = configurationElement.getAttribute("id"); //$NON-NLS-1$
 					if (initializerID != null && initializerID.equals(containerID)){
 						if (JavaModelManager.CP_RESOLVE_VERBOSE_ADVANCED)
@@ -4026,10 +4166,9 @@ public final class JavaCore extends Plugin {
 		IExtensionPoint extension = Platform.getExtensionRegistry().getExtensionPoint(JavaCore.PLUGIN_ID, JavaModelManager.CPVARIABLE_INITIALIZER_EXTPOINT_ID);
 		if (extension != null) {
 			IExtension[] extensions =  extension.getExtensions();
-			for(int i = 0; i < extensions.length; i++){
-				IConfigurationElement [] configElements = extensions[i].getConfigurationElements();
-				for(int j = 0; j < configElements.length; j++){
-					IConfigurationElement configElement = configElements[j];
+			for (IExtension ext : extensions) {
+				IConfigurationElement [] configElements = ext.getConfigurationElements();
+				for (IConfigurationElement configElement : configElements) {
 					String varAttribute = configElement.getAttribute("variable"); //$NON-NLS-1$
 					if (variableName.equals(varAttribute)) {
 						String deprecatedAttribute = configElement.getAttribute("deprecated"); //$NON-NLS-1$
@@ -4061,10 +4200,9 @@ public final class JavaCore extends Plugin {
 		IExtensionPoint extension = Platform.getExtensionRegistry().getExtensionPoint(JavaCore.PLUGIN_ID, JavaModelManager.CPVARIABLE_INITIALIZER_EXTPOINT_ID);
 		if (extension != null) {
 			IExtension[] extensions =  extension.getExtensions();
-			for(int i = 0; i < extensions.length; i++){
-				IConfigurationElement [] configElements = extensions[i].getConfigurationElements();
-				for(int j = 0; j < configElements.length; j++){
-					IConfigurationElement configElement = configElements[j];
+			for (IExtension ext : extensions) {
+				IConfigurationElement [] configElements = ext.getConfigurationElements();
+				for (IConfigurationElement configElement : configElements) {
 					try {
 						String varAttribute = configElement.getAttribute("variable"); //$NON-NLS-1$
 						if (variable.equals(varAttribute)) {
@@ -4195,9 +4333,7 @@ public final class JavaCore extends Plugin {
 		IJavaElement[] elements = region.getElements();
 		HashMap projectsStates = new HashMap();
 		ArrayList collector = new ArrayList();
-		for (int i = 0, max = elements.length; i < max; i++) {
-			// collect all the java project
-			IJavaElement element = elements[i];
+		for (IJavaElement element : elements) {
 			IJavaProject javaProject = element.getJavaProject();
 			IProject project = javaProject.getProject();
 			State state = null;
@@ -4220,12 +4356,12 @@ public final class JavaCore extends Plugin {
 				}
 				if (roots == null) continue;
 				IRegion region2 = JavaCore.newRegion();
-				for (int j = 0; j < roots.length; j++) {
-					region2.add(roots[j]);
+				for (IPackageFragmentRoot root : roots) {
+					region2.add(root);
 				}
 				IResource[] res = getGeneratedResources(region2, includesNonJavaResources);
-				for (int j = 0, max2 = res.length; j < max2; j++) {
-					collector.add(res[j]);
+				for (IResource re : res) {
+					collector.add(re);
 				}
 				continue;
 			}
@@ -4271,8 +4407,8 @@ public final class JavaCore extends Plugin {
 						// ignore
 					}
 					if (compilationUnits == null) continue;
-					for (int j = 0, max2 = compilationUnits.length; j < max2; j++) {
-						getGeneratedResource(compilationUnits[j], container, state, rootPathSegmentCounts, collector);
+					for (ICompilationUnit compilationUnit : compilationUnits) {
+						getGeneratedResource(compilationUnit, container, state, rootPathSegmentCounts, collector);
 					}
 					if (includesNonJavaResources) {
 						// retrieve all non-java resources from the output location using the package fragment path
@@ -4298,8 +4434,8 @@ public final class JavaCore extends Plugin {
 						// ignore
 					}
 					if (children == null) continue;
-					for (int j = 0, max2 = children.length; j < max2; j++) {
-						fragment = (IPackageFragment) children[j];
+					for (IJavaElement child : children) {
+						fragment = (IPackageFragment) child;
 						ICompilationUnit[] units = null;
 						try {
 							units = fragment.getCompilationUnits();
@@ -4307,8 +4443,8 @@ public final class JavaCore extends Plugin {
 							// ignore
 						}
 						if (units == null) continue;
-						for (int n = 0, max3 = units.length; n < max3; n++) {
-							getGeneratedResource(units[n], container, state, rootPathSegmentCounts, collector);
+						for (ICompilationUnit unit2 : units) {
+							getGeneratedResource(unit2, container, state, rootPathSegmentCounts, collector);
 						}
 						if (includesNonJavaResources) {
 							// retrieve all non-java resources from the output location using the package fragment path
@@ -4344,8 +4480,8 @@ public final class JavaCore extends Plugin {
 		char[][] typeNames = state.getDefinedTypeNamesFor(resource.getProjectRelativePath().toString());
 		if (typeNames != null) {
 			IPath path = unit.getPath().removeFirstSegments(rootPathSegmentCounts).removeLastSegments(1);
-			for (int j = 0, max2 = typeNames.length; j < max2; j++) {
-				IPath localPath = path.append(new String(typeNames[j]) + ".class"); //$NON-NLS-1$
+			for (char[] typeName : typeNames) {
+				IPath localPath = path.append(new String(typeName) + ".class"); //$NON-NLS-1$
 				IResource member = container.findMember(localPath);
 				if (member != null && member.exists()) {
 					collector.add(member);
@@ -4637,8 +4773,8 @@ public final class JavaCore extends Plugin {
 		final IJavaProject[] projects = manager.getJavaModel().getJavaProjects();
 		HashSet visitedPaths = new HashSet();
 		ExternalFoldersManager externalFoldersManager = JavaModelManager.getExternalManager();
-		for (int i = 0, length = projects.length; i < length; i++) {
-			JavaProject javaProject = (JavaProject) projects[i];
+		for (IJavaProject project : projects) {
+			JavaProject javaProject = (JavaProject) project;
 			IClasspathEntry[] classpath;
 			try {
 				classpath = javaProject.getResolvedClasspath();
@@ -4647,8 +4783,7 @@ public final class JavaCore extends Plugin {
 				continue;
 			}
 			if (classpath != null) {
-				for (int j = 0, length2 = classpath.length; j < length2; j++) {
-					IClasspathEntry entry = classpath[j];
+				for (IClasspathEntry entry : classpath) {
 					if (entry.getSourceAttachmentPath() != null) {
 						IPath entryPath = entry.getPath();
 						if (visitedPaths.add(entryPath)) {
@@ -4716,8 +4851,7 @@ public final class JavaCore extends Plugin {
 			IWorkspaceRunnable runnable = new IWorkspaceRunnable() {
 				@Override
 				public void run(IProgressMonitor progressMonitor2) throws CoreException {
-					for (int i = 0, length = projects.length; i < length; i++) {
-						IJavaProject project = projects[i];
+					for (IJavaProject project : projects) {
 						try {
 							if (JavaBuilder.DEBUG) {
 								trace("Touching " + project.getElementName()); //$NON-NLS-1$
@@ -5963,6 +6097,7 @@ public final class JavaCore extends Plugin {
 	 * @since 3.0
 	 */
 	public static void run(IWorkspaceRunnable action, ISchedulingRule rule, IProgressMonitor monitor) throws CoreException {
+		JavaModelManager.assertModelModifiable();
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		if (workspace.isTreeLocked()) {
 			new BatchOperation(action).run(monitor);
@@ -5971,6 +6106,68 @@ public final class JavaCore extends Plugin {
 			workspace.run(new BatchOperation(action), rule, IWorkspace.AVOID_UPDATE, monitor);
 		}
 	}
+	/**
+	 * @since 3.37
+	 */
+	@FunctionalInterface
+	public static interface JavaCallable<V, E extends Exception> {
+		/**
+		 * Computes a value or throws an exception.
+		 *
+		 * @return the result
+		 * @throws E the Exception of given type
+		 */
+		V call() throws E;
+	}
+	/**
+	 * @since 3.37
+	 */
+	@FunctionalInterface
+	public static interface JavaRunnable<E extends Exception> {
+		/**
+		 * Runs or throws an exception.
+		 *
+		 * @throws E the Exception of given type
+		 */
+		void run() throws E;
+	}
+
+
+	/**
+	 * Calls the argument and returns its result or its Exception. The argument's {@code call()} is supposed to query
+	 * Java model and must not modify it. This method will try to run Java Model queries in optimized way (Using caches
+	 * during the operation). It is safe to nest multiple calls - but not necessary.
+	 *
+	 *
+	 * @param callable
+	 *            A JavaCallable that can throw an Exception
+	 * @return the result
+	 * @exception E
+	 *                An {@link Exception} that is thrown by the {@code callable}.
+	 * @since 3.37
+	 */
+	public static <T, E extends Exception> T callReadOnly(JavaCallable<T, E> callable) throws E {
+		return JavaModelManager.callReadOnly(callable);
+	}
+
+	/**
+	 * Runs the argument and will forward its Exception. The argument's {@code run()} is supposed to query Java model
+	 * and must not modify it. This method will try to run Java Model queries in optimized way (caching things during
+	 * the operation). It is safe to nest multiple calls - but not necessary.
+	 *
+	 * @param runnable
+	 *            A JavaRunnable that can throw an Exception
+	 * @exception E
+	 *                An {@link Exception} that is thrown by the {@code runnable}.
+	 * @since 3.37
+	 */
+	public static <T, E extends Exception> void runReadOnly(JavaRunnable<E> runnable) throws E {
+		callReadOnly(() -> {
+			runnable.run();
+			return null;
+		});
+	}
+
 	/**
 	 * Bind a container reference path to some actual containers (<code>IClasspathContainer</code>).
 	 * This API must be invoked whenever changes in container need to be reflected onto the JavaModel.
@@ -6162,51 +6359,12 @@ public final class JavaCore extends Plugin {
 		long jdkLevel = CompilerOptions.versionToJdkLevel(compliance);
 		int major = (int) (jdkLevel >>> 16);
 		switch(major) {
-			case ClassFileConstants.MAJOR_VERSION_1_3:
-				options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_3);
-				options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_3);
-				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_1);
-				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.IGNORE);
-				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.IGNORE);
-				break;
-			case ClassFileConstants.MAJOR_VERSION_1_4:
-				options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_4);
-				options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_3);
-				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_2);
-				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.WARNING);
-				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.WARNING);
-				break;
-			case ClassFileConstants.MAJOR_VERSION_1_5:
-				options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_5);
-				options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_5);
-				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_5);
-				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_CODEGEN_INLINE_JSR_BYTECODE, JavaCore.ENABLED);
-				break;
-			case ClassFileConstants.MAJOR_VERSION_1_6:
-				options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_6);
-				options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_6);
-				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_6);
-				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_CODEGEN_INLINE_JSR_BYTECODE, JavaCore.ENABLED);
-				break;
-			case ClassFileConstants.MAJOR_VERSION_1_7:
-				options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_7);
-				options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_7);
-				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_7);
-				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_CODEGEN_INLINE_JSR_BYTECODE, JavaCore.ENABLED);
-				break;
 			case ClassFileConstants.MAJOR_VERSION_1_8:
 				options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_8);
 				options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_8);
 				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_8);
 				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.ERROR);
 				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_CODEGEN_INLINE_JSR_BYTECODE, JavaCore.ENABLED);
 				break;
 			case ClassFileConstants.MAJOR_VERSION_9:
 				options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_9);
@@ -6214,7 +6372,6 @@ public final class JavaCore extends Plugin {
 				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_9);
 				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.ERROR);
 				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_CODEGEN_INLINE_JSR_BYTECODE, JavaCore.ENABLED);
 				options.put(JavaCore.COMPILER_RELEASE, JavaCore.ENABLED);
 				break;
 			case ClassFileConstants.MAJOR_VERSION_10:
@@ -6223,7 +6380,6 @@ public final class JavaCore extends Plugin {
 				options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_10);
 				options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.ERROR);
 				options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.ERROR);
-				options.put(JavaCore.COMPILER_CODEGEN_INLINE_JSR_BYTECODE, JavaCore.ENABLED);
 				options.put(JavaCore.COMPILER_RELEASE, JavaCore.ENABLED);
 				break;
 			default:
@@ -6234,7 +6390,6 @@ public final class JavaCore extends Plugin {
 					options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, version);
 					options.put(JavaCore.COMPILER_PB_ASSERT_IDENTIFIER, JavaCore.ERROR);
 					options.put(JavaCore.COMPILER_PB_ENUM_IDENTIFIER, JavaCore.ERROR);
-					options.put(JavaCore.COMPILER_CODEGEN_INLINE_JSR_BYTECODE, JavaCore.ENABLED);
 					options.put(JavaCore.COMPILER_RELEASE, JavaCore.ENABLED);
 					options.put(JavaCore.COMPILER_PB_ENABLE_PREVIEW_FEATURES, JavaCore.DISABLED);
 					options.put(JavaCore.COMPILER_PB_REPORT_PREVIEW_FEATURES, JavaCore.WARNING);
@@ -6276,6 +6431,7 @@ public final class JavaCore extends Plugin {
 	public static String latestSupportedJavaVersion() {
 		return allVersions.get(allVersions.size() - 1);
 	}
+
 	/**
 	 * Compares two given versions of the Java platform. The versions being compared must both be
 	 * one of the supported values mentioned in

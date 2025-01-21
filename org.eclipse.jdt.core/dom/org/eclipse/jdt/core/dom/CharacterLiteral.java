@@ -16,7 +16,6 @@ package org.eclipse.jdt.core.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.eclipse.jdt.core.compiler.InvalidInputException;
 import org.eclipse.jdt.internal.compiler.parser.Scanner;
 import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
@@ -303,7 +302,7 @@ public class CharacterLiteral extends Expression {
 	 * @param value the character value
 	 */
 	public void setCharValue(char value) {
-		StringBuffer b = new StringBuffer(3);
+		StringBuilder b = new StringBuilder(3);
 
 		b.append('\''); // opening delimiter
 		Util.appendEscapedChar(b, value, false);

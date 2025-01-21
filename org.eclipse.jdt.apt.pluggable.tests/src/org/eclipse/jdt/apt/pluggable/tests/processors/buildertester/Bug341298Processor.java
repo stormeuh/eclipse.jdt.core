@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -66,8 +65,8 @@ public class Bug341298Processor extends AbstractProcessor {
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 		StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);
 
-		List<String> options = opts.entrySet().stream().filter((e) -> !e.getKey().equals("phase"))
-				.flatMap((e) -> Arrays.asList("-" + e.getKey(), e.getValue()).stream()).collect(toList());
+		List<String> options = opts.entrySet().stream().filter(e -> !e.getKey().equals("phase"))
+				.flatMap(e -> Arrays.asList("-" + e.getKey(), e.getValue()).stream()).collect(toList());
 
 		Iterable<? extends JavaFileObject> objects = fileManager
 				.getJavaFileObjectsFromFiles(Arrays.asList(new File(sourceFile.toUri())));

@@ -8,6 +8,15 @@ on:
   pull_request:
 
 jobs:
+  event_file:
+    name: "Upload Event File"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Upload
+      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+      with:
+        name: Event File
+        path: ${{ github.event_path }}
   build:
     runs-on: ubuntu-latest
     steps:
@@ -28,44 +37,16 @@ jobs:
     - name: Set up Maven
       uses: stCarolas/setup-maven@d6af6abeda15e98926a57b5aa970a96bb37f97d1 # v5
       with:
-        maven-version: 3.9.3
-    - name: Define build qualifier
+        maven-version: 3.9.8
+    - name: Build with Maven 🏗️
       run: |
-        if [ "$GITHUB_REF_TYPE" = "tag" ]; then
-          export BUILD_QUALIFIER="$GITHUB_REF_NAME"
-        else
-          export BUILD_QUALIFIER="`git describe`"
-        fi
-        echo "Setting BUILD_QUALIFIER=$BUILD_QUALIFIER"
-        echo "BUILD_QUALIFIER=$BUILD_QUALIFIER" >> "$GITHUB_ENV"
-    - name: Build org.eclipse.jdt.core.compiler.batch with Maven 🏗️
-      run: |
-        mvn clean install -DforceContextQualifier=v$BUILD_QUALIFIER --batch-mode -f org.eclipse.jdt.core.compiler.batch -DlocalEcjVersion=99.99
-        #mvn -U clean verify --batch-mode --fail-at-end -Ptest-on-javase-20 -Pbree-libs -Papi-check -Djava.io.tmpdir=$WORKSPACE/tmp -Dproject.build.sourceEncoding=UTF-8 -Dtycho.surefire.argLine="--add-modules ALL-SYSTEM -Dcompliance=1.8,11,17,20 -Djdt.performance.asserts=disabled" -Dcbi-ecj-version=99.99
-    - name: Build org.eclipse.jdt.core with Maven 🏗️
-      run: |
-        mvn clean install -DforceContextQualifier=v$BUILD_QUALIFIER --batch-mode -f org.eclipse.jdt.core -DlocalEcjVersion=99.99
-        #mvn -U clean verify --batch-mode --fail-at-end -Ptest-on-javase-20 -Pbree-libs -Papi-check -Djava.io.tmpdir=$WORKSPACE/tmp -Dproject.build.sourceEncoding=UTF-8 -Dtycho.surefire.argLine="--add-modules ALL-SYSTEM -Dcompliance=1.8,11,17,20 -Djdt.performance.asserts=disabled" -Dcbi-ecj-version=99.99
-    - name: Download JUnit
-      run: |
-        cd org.eclipse.jdt.core
-        mvn dependency:copy -Dartifact=org.junit.platform:junit-platform-console-standalone:1.9.3
-    - name: Build and run FSC4J test suite
-      run: |
-        set -e
-        cd org.eclipse.jdt.core
-        export JUNIT_PATH=`pwd`/target/dependency/junit-platform-console-standalone-1.9.3.jar
-        java -cp ../org.eclipse.jdt.core.compiler.batch/target/classes org.eclipse.jdt.internal.compiler.batch.Main -21 -proc:none -d target/classes s4jie2-tests/runner
-        java -cp ../org.eclipse.jdt.core.compiler.batch/target/classes:target/classes org.eclipse.jdt.core.s4jie2TestSuite
-    - name: Rename plugins
-      run: |
-        mv org.eclipse.jdt.core.compiler.batch/target/org.eclipse.jdt.core.compiler.batch-3.36.0-SNAPSHOT.jar org.eclipse.jdt.core.compiler.batch_3.36.0.v$BUILD_QUALIFIER.jar
-        mv org.eclipse.jdt.core/target/org.eclipse.jdt.core-3.36.0-SNAPSHOT.jar org.eclipse.jdt.core_3.36.0.v$BUILD_QUALIFIER.jar
-    - name: Upload plugins as artifact
-      uses: actions/upload-artifact@v4
+        mvn clean install --batch-mode -f org.eclipse.jdt.core.compiler.batch -DlocalEcjVersion=99.99
+        mvn -U clean verify --batch-mode --fail-at-end -Ptest-on-javase-21 -Pbree-libs -Papi-check -Djava.io.tmpdir=$WORKSPACE/tmp -Dproject.build.sourceEncoding=UTF-8 -Dtycho.surefire.argLine="--add-modules ALL-SYSTEM -Dcompliance=1.8,11,17,20 -Djdt.performance.asserts=disabled" -Dcbi-ecj-version=99.99
+    - name: Upload Test Results for Linux
+      if: always()
+      uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
       with:
-        name: plugins
-        if-no-files-found: error
+        name: test-results-linux
+        if-no-files-found: warn
         path: |
-          org.eclipse.jdt.core.compiler.batch_3.36.0.v${{ env.BUILD_QUALIFIER }}.jar
-          org.eclipse.jdt.core_3.36.0.v${{ env.BUILD_QUALIFIER }}.jar
+          ${{ github.workspace }}/**/target/surefire-reports/*.xml

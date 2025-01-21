@@ -17,7 +17,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -26,7 +25,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.TypeElement;
-
 import org.eclipse.jdt.compiler.apt.tests.processors.base.BaseProcessor;
 
 @SupportedAnnotationTypes("def.Module")
@@ -117,7 +115,7 @@ public class Java9ModuleProcessor extends BaseProcessor {
 		throw new AssertionFailedError(msg);
 	}
 	private String getExceptionStackTrace(Throwable t) {
-		StringBuffer buf = new StringBuffer(t.getMessage());
+		StringBuilder buf = new StringBuilder(t.getMessage());
 		StackTraceElement[] traces = t.getStackTrace();
 		for (int i = 0; i < traces.length; i++) {
 			StackTraceElement trace = traces[i];
@@ -143,7 +141,7 @@ public class Java9ModuleProcessor extends BaseProcessor {
         return expected.equals(actual);
     }
 	
-	private class AssertionFailedError extends Error {
+	private static class AssertionFailedError extends Error {
 		private static final long serialVersionUID = 1L;
 
 		public AssertionFailedError(String msg) {

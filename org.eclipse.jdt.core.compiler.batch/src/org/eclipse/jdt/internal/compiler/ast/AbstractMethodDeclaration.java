@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2023 IBM Corporation and others.
+ * Copyright (c) 2000, 2024 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -30,18 +30,35 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.ast;
 
-import java.util.List;
+import static org.eclipse.jdt.internal.compiler.lookup.MethodBinding.PARAM_NONNULL;
+import static org.eclipse.jdt.internal.compiler.lookup.MethodBinding.PARAM_NOTOWNING;
+import static org.eclipse.jdt.internal.compiler.lookup.MethodBinding.PARAM_NULLABLE;
+import static org.eclipse.jdt.internal.compiler.lookup.MethodBinding.PARAM_NULLITY;
+import static org.eclipse.jdt.internal.compiler.lookup.MethodBinding.PARAM_OWNING;
 
-import org.eclipse.jdt.core.compiler.*;
-import org.eclipse.jdt.internal.compiler.*;
+import java.util.List;
+import org.eclipse.jdt.core.compiler.CategorizedProblem;
+import org.eclipse.jdt.core.compiler.CharOperation;
+import org.eclipse.jdt.core.compiler.IProblem;
+import org.eclipse.jdt.internal.compiler.ASTVisitor;
+import org.eclipse.jdt.internal.compiler.ClassFile;
+import org.eclipse.jdt.internal.compiler.CompilationResult;
 import org.eclipse.jdt.internal.compiler.ast.TypeReference.AnnotationPosition;
-import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
-import org.eclipse.jdt.internal.compiler.impl.*;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.codegen.*;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.codegen.Opcodes;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
+import org.eclipse.jdt.internal.compiler.impl.ReferenceContext;
 import org.eclipse.jdt.internal.compiler.lookup.*;
-import org.eclipse.jdt.internal.compiler.problem.*;
-import org.eclipse.jdt.internal.compiler.parser.*;
+import org.eclipse.jdt.internal.compiler.parser.Parser;
+import org.eclipse.jdt.internal.compiler.problem.AbortCompilation;
+import org.eclipse.jdt.internal.compiler.problem.AbortCompilationUnit;
+import org.eclipse.jdt.internal.compiler.problem.AbortMethod;
+import org.eclipse.jdt.internal.compiler.problem.AbortType;
+import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
+import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 import org.eclipse.jdt.internal.compiler.util.Util;
 
 @SuppressWarnings({"rawtypes"})
@@ -74,13 +91,9 @@ public abstract class AbstractMethodDeclaration
 	public int bodyStart;
 	public int bodyEnd = -1;
 	public CompilationResult compilationResult;
-	public boolean containsSwitchWithTry = false;
-	public boolean addPatternAccessorException = false;
-	public LocalVariableBinding recPatCatchVar = null;
 
 	AbstractMethodDeclaration(CompilationResult compilationResult){
 		this.compilationResult = compilationResult;
-		this.containsSwitchWithTry = false;
 	}
 
 	/*
@@ -115,16 +128,28 @@ public abstract class AbstractMethodDeclaration
 			for (int i = 0, length = arguments.length; i < length; i++) {
 				Argument argument = arguments[i];
 				binding.parameters[i] = argument.createBinding(scope, binding.parameters[i]);
+				long argumentTagBits = argument.binding.tagBits;
+				if ((argumentTagBits & TagBits.AnnotationOwning) != 0) {
+					if (binding.parameterFlowBits == null) {
+						binding.parameterFlowBits = new byte[arguments.length];
+					}
+					binding.parameterFlowBits[i] |= PARAM_OWNING;
+				} else if ((argumentTagBits & TagBits.AnnotationNotOwning) != 0) {
+					if (binding.parameterFlowBits == null) {
+						binding.parameterFlowBits = new byte[arguments.length];
+					}
+					binding.parameterFlowBits[i] |= PARAM_NOTOWNING;
+				}
 				if (useTypeAnnotations)
 					continue; // no business with SE7 null annotations in the 1.8 case.
 				// createBinding() has resolved annotations, now transfer nullness info from the argument to the method:
-				long argTypeTagBits = (argument.binding.tagBits & TagBits.AnnotationNullMASK);
+				long argTypeTagBits = (argumentTagBits & TagBits.AnnotationNullMASK);
 				if (argTypeTagBits != 0) {
-					if (binding.parameterNonNullness == null) {
-						binding.parameterNonNullness = new Boolean[arguments.length];
+					if (binding.parameterFlowBits == null) {
+						binding.parameterFlowBits = new byte[arguments.length];
 						binding.tagBits |= TagBits.IsNullnessKnown;
 					}
-					binding.parameterNonNullness[i] = Boolean.valueOf(argTypeTagBits == TagBits.AnnotationNonNull);
+					binding.parameterFlowBits[i] = MethodBinding.flowBitFromAnnotationTagBit(argTypeTagBits);
 				}
 			}
 		}
@@ -138,8 +163,8 @@ public abstract class AbstractMethodDeclaration
 		if (this.arguments != null) {
 			// by default arguments in abstract/native methods are considered to be used (no complaint is expected)
 			if (this.binding == null) {
-				for (int i = 0, length = this.arguments.length; i < length; i++) {
-					this.arguments[i].bind(this.scope, null, true);
+				for (Argument argument : this.arguments) {
+					argument.bind(this.scope, null, true);
 				}
 				return;
 			}
@@ -215,38 +240,54 @@ public abstract class AbstractMethodDeclaration
 	}
 
 	/**
-	 * Feed null information from argument annotations into the analysis and mark arguments as assigned.
+	 * Feed information from certain argument annotations into the analysis and mark arguments as assigned.
+	 * Annotations evaluated here are (if enabled):
+	 * <ul>
+	 * <li>NonNull - for null analysis
+	 * <li>Nullable - for null analysis
+	 * <li>Owning - for resource leak analysis
+	 * <li>NotOwning - for resource leak analysis
+	 * </ul>
 	 */
-	static void analyseArguments(LookupEnvironment environment, FlowInfo flowInfo, Argument[] methodArguments, MethodBinding methodBinding) {
+	static void analyseArguments(LookupEnvironment environment, FlowInfo flowInfo, FlowContext flowContext, Argument[] methodArguments, MethodBinding methodBinding) {
 		if (methodArguments != null) {
 			boolean usesNullTypeAnnotations = environment.usesNullTypeAnnotations();
+			boolean usesOwningAnnotations = environment.usesOwningAnnotations();
+
 			int length = Math.min(methodBinding.parameters.length, methodArguments.length);
 			for (int i = 0; i < length; i++) {
+				TypeBinding parameterBinding = methodBinding.parameters[i];
+				LocalVariableBinding local = methodArguments[i].binding;
 				if (usesNullTypeAnnotations) {
 					// leverage null type annotations:
-					long tagBits = methodBinding.parameters[i].tagBits & TagBits.AnnotationNullMASK;
+					long tagBits = parameterBinding.tagBits & TagBits.AnnotationNullMASK;
 					if (tagBits == TagBits.AnnotationNonNull)
-						flowInfo.markAsDefinitelyNonNull(methodArguments[i].binding);
+						flowInfo.markAsDefinitelyNonNull(local);
 					else if (tagBits == TagBits.AnnotationNullable)
-						flowInfo.markPotentiallyNullBit(methodArguments[i].binding);
-					else if (methodBinding.parameters[i].isFreeTypeVariable())
-						flowInfo.markNullStatus(methodArguments[i].binding, FlowInfo.FREE_TYPEVARIABLE);
+						flowInfo.markPotentiallyNullBit(local);
+					else if (parameterBinding.isFreeTypeVariable())
+						flowInfo.markNullStatus(local, FlowInfo.FREE_TYPEVARIABLE);
 				} else {
-					if (methodBinding.parameterNonNullness != null) {
+					if (methodBinding.parameterFlowBits != null) {
 						// leverage null-info from parameter annotations:
-						Boolean nonNullNess = methodBinding.parameterNonNullness[i];
-						if (nonNullNess != null) {
-							if (nonNullNess.booleanValue())
-								flowInfo.markAsDefinitelyNonNull(methodArguments[i].binding);
-							else
-								flowInfo.markPotentiallyNullBit(methodArguments[i].binding);
-						}
+						int nullity = methodBinding.parameterFlowBits[i] & PARAM_NULLITY;
+						if (nullity == PARAM_NONNULL)
+							flowInfo.markAsDefinitelyNonNull(local);
+						else if (nullity == PARAM_NULLABLE)
+							flowInfo.markPotentiallyNullBit(local);
 					}
 				}
-				if (!flowInfo.hasNullInfoFor(methodArguments[i].binding))
-					flowInfo.markNullStatus(methodArguments[i].binding, FlowInfo.UNKNOWN); // ensure nullstatus is initialized
+				if (!flowInfo.hasNullInfoFor(local))
+					flowInfo.markNullStatus(local, FlowInfo.UNKNOWN); // ensure nullstatus is initialized
 				// tag parameters as being set:
-				flowInfo.markAsDefinitelyAssigned(methodArguments[i].binding);
+				flowInfo.markAsDefinitelyAssigned(local);
+
+				if (usesOwningAnnotations && local.type.hasTypeBit(TypeIds.BitAutoCloseable|TypeIds.BitCloseable)) {
+					long owningTagBits = local.tagBits & TagBits.AnnotationOwningMASK;
+					int initialNullStatus = (local.tagBits & TagBits.AnnotationOwning) !=0 ? FlowInfo.NULL : FlowInfo.NON_NULL; // defaulting to not-owning
+					local.closeTracker = new FakedTrackingVariable(local, methodArguments[i], flowInfo, flowContext, initialNullStatus, usesOwningAnnotations);
+					local.closeTracker.owningState = FakedTrackingVariable.owningStateFromTagBits(owningTagBits, FakedTrackingVariable.NOT_OWNED_PER_DEFAULT);
+				}
 			}
 		}
 	}
@@ -346,9 +387,9 @@ public abstract class AbstractMethodDeclaration
 
 			// arguments initialization for local variable debug attributes
 			if (this.arguments != null) {
-				for (int i = 0, max = this.arguments.length; i < max; i++) {
+				for (Argument argument : this.arguments) {
 					LocalVariableBinding argBinding;
-					codeStream.addVisibleLocalVariable(argBinding = this.arguments[i].binding);
+					codeStream.addVisibleLocalVariable(argBinding = argument.binding);
 					argBinding.recordInitializationStartPC(0);
 				}
 			}
@@ -393,17 +434,14 @@ public abstract class AbstractMethodDeclaration
 				codeStream.removeVariable(this.oldInvariantsCheckingStateVariable);
 				codeStream.fieldAccess(Opcodes.OPC_putfield, enclosingClass.invariantsCheckingStateField, enclosingClass.binding);
 			}
+			codeStream.pushPatternAccessTrapScope(this.scope);
 			if (this.statements != null) {
-				if (this.addPatternAccessorException)
-					codeStream.addPatternCatchExceptionInfo(this.scope, this.recPatCatchVar);
-
 				for (Statement stmt : this.statements) {
 					stmt.generateCode(this.scope, codeStream);
+					if (!this.compilationResult.hasErrors() && (codeStream.stackDepth != 0 || codeStream.operandStack.size() != 0)) {
+						this.scope.problemReporter().operandStackSizeInappropriate(this);
+					}
 				}
-
-				if (this.addPatternAccessorException)
-					codeStream.removePatternCatchExceptionInfo(this.scope, ((this.bits & ASTNode.NeedFreeReturn) != 0));
-
 			}
 			// if a problem got reported during code gen, then trigger problem method creation
 			if (this.ignoreFurtherInvestigation) {
@@ -413,6 +451,9 @@ public abstract class AbstractMethodDeclaration
 				this.generatePostconditionCheck(codeStream, this.bodyEnd);
 				codeStream.return_();
 			}
+			// See https://github.com/eclipse-jdt/eclipse.jdt.core/issues/1796#issuecomment-1933458054
+			codeStream.exitUserScope(this.scope, lvb -> !lvb.isParameter());
+			codeStream.handleRecordAccessorExceptions(this.scope);
 			// local variable attributes
 			codeStream.exitUserScope(this.scope);
 			codeStream.recordPositionsFrom(0, this.declarationSourceEnd);
@@ -582,13 +623,17 @@ public abstract class AbstractMethodDeclaration
 		return (this.modifiers & ClassFileConstants.AccStatic) != 0;
 	}
 
+	public boolean isCandidateMain() {
+		return false;
+	}
+
 	/**
 	 * Fill up the method body with statement
 	 */
 	public abstract void parseStatements(Parser parser, CompilationUnitDeclaration unit);
 
 	@Override
-	public StringBuffer print(int tab, StringBuffer output) {
+	public StringBuilder print(int tab, StringBuilder output) {
 
 		if (this.javadoc != null) {
 			this.javadoc.print(tab, output);
@@ -636,16 +681,16 @@ public abstract class AbstractMethodDeclaration
 		return output;
 	}
 
-	public StringBuffer printBody(int indent, StringBuffer output) {
+	public StringBuilder printBody(int indent, StringBuilder output) {
 
 		if (isAbstract() || (this.modifiers & ExtraCompilerModifiers.AccSemicolonBody) != 0)
 			return output.append(';');
 
 		output.append(" {"); //$NON-NLS-1$
 		if (this.statements != null) {
-			for (int i = 0; i < this.statements.length; i++) {
+			for (Statement statement : this.statements) {
 				output.append('\n');
-				this.statements[i].printStatement(indent, output);
+				statement.printStatement(indent, output);
 			}
 		}
 		output.append('\n');
@@ -653,7 +698,7 @@ public abstract class AbstractMethodDeclaration
 		return output;
 	}
 
-	public StringBuffer printReturnType(int indent, StringBuffer output) {
+	public StringBuilder printReturnType(int indent, StringBuilder output) {
 
 		return output;
 	}
@@ -753,6 +798,15 @@ public abstract class AbstractMethodDeclaration
 		if (this.receiver.type.hasNullTypeAnnotation(AnnotationPosition.ANY)) {
 			this.scope.problemReporter().nullAnnotationUnsupportedLocation(this.receiver.type);
 		}
+		if (this.scope.compilerOptions().isAnnotationBasedResourceAnalysisEnabled && this.receiver.type.resolvedType != null) {
+			for (AnnotationBinding annotationBinding : this.receiver.type.resolvedType.getTypeAnnotations()) {
+				ReferenceBinding annotationType = annotationBinding.getAnnotationType();
+				if (annotationType != null && annotationType.hasTypeBit(TypeIds.BitOwningAnnotation)) {
+					this.binding.extendedTagBits = ExtendedTagBits.IsClosingMethod;
+					break;
+				}
+			}
+		}
 	}
 	public void resolveJavadoc() {
 
@@ -765,7 +819,8 @@ public abstract class AbstractMethodDeclaration
 			// Set javadoc visibility
 			int javadocVisibility = this.binding.modifiers & ExtraCompilerModifiers.AccVisibilityMASK;
 			ClassScope classScope = this.scope.classScope();
-			try (ProblemReporter reporter = this.scope.problemReporter()) {
+			ProblemReporter reporter = this.scope.problemReporter();
+			try {
 				int severity = reporter.computeSeverity(IProblem.JavadocMissing);
 				if (severity != ProblemSeverities.Ignore) {
 					if (classScope != null) {
@@ -774,6 +829,8 @@ public abstract class AbstractMethodDeclaration
 					int javadocModifiers = (this.binding.modifiers & ~ExtraCompilerModifiers.AccVisibilityMASK) | javadocVisibility;
 					reporter.javadocMissing(this.sourceStart, this.sourceEnd, severity, javadocModifiers);
 				}
+			} finally {
+				reporter.close();
 			}
 		}
 	}
@@ -781,11 +838,7 @@ public abstract class AbstractMethodDeclaration
 	public void resolveStatements() {
 
 		if (this.statements != null) {
- 			for (int i = 0, length = this.statements.length; i < length; i++) {
- 				Statement stmt = this.statements[i];
- 				stmt.resolve(this.scope);
-			}
- 			this.recPatCatchVar = RecordPattern.getRecPatternCatchVar(0, this.scope);
+			resolveStatements(this.statements, this.scope);
 		} else if ((this.bits & UndocumentedEmptyBlock) != 0) {
 			if (!this.isConstructor() || this.arguments != null) { // https://bugs.eclipse.org/bugs/show_bug.cgi?id=319626
 				this.scope.problemReporter().undocumentedEmptyBlock(this.bodyStart-1, this.bodyEnd+1);
@@ -796,11 +849,6 @@ public abstract class AbstractMethodDeclaration
 	@Override
 	public void tagAsHavingErrors() {
 		this.ignoreFurtherInvestigation = true;
-	}
-
-	@Override
-	public void tagAsHavingIgnoredMandatoryErrors(int problemId) {
-		// Nothing to do for this context;
 	}
 
 	public void traverse(
@@ -817,14 +865,15 @@ public abstract class AbstractMethodDeclaration
 		if (this.binding == null) return;
 		// null annotations on parameters?
 		if (!useTypeAnnotations) {
-			if (this.binding.parameterNonNullness != null) {
+			if (this.binding.parameterFlowBits != null) {
 				int length = this.binding.parameters.length;
 				for (int i=0; i<length; i++) {
-					if (this.binding.parameterNonNullness[i] != null) {
-						long nullAnnotationTagBit =  this.binding.parameterNonNullness[i].booleanValue()
+					byte nullity = this.binding.parameterFlowBits[i];
+					if (nullity != 0) {
+						long nullAnnotationTagBit =  nullity == PARAM_NONNULL
 								? TagBits.AnnotationNonNull : TagBits.AnnotationNullable;
 						if (!this.scope.validateNullAnnotation(nullAnnotationTagBit, this.arguments[i].type, this.arguments[i].annotations))
-							this.binding.parameterNonNullness[i] = null;
+							this.binding.parameterFlowBits[i] &= ~PARAM_NULLITY;
 					}
 				}
 			}

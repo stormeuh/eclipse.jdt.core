@@ -20,7 +20,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.tools.Diagnostic.Kind;
-
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.internal.apt.pluggable.core.Apt6Plugin;
@@ -32,7 +31,6 @@ import org.eclipse.jdt.internal.compiler.apt.dispatch.BaseMessagerImpl;
  *
  * @since 3.3
  */
-@SuppressWarnings("restriction")
 public class IdeMessagerImpl implements Messager {
 
 	private final IdeAnnotationProcessorManager _manager;

@@ -31,16 +31,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
 import javax.lang.model.SourceVersion;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
-
-import org.eclipse.jdt.internal.compiler.apt.util.EclipseFileManager;
-
 import junit.framework.TestCase;
+import org.eclipse.jdt.internal.compiler.apt.util.EclipseFileManager;
 
 /**
  * Test the implementation of the Filer interface,
@@ -83,13 +80,13 @@ public class FileManagerTests extends TestCase {
 		try {
 			fileManager = new EclipseFileManager(Locale.getDefault(), Charset.defaultCharset());
 
-			List<File> fins = new ArrayList<File>();
+			List<File> fins = new ArrayList<>();
 			fins.add(dir);
 
 			JavaFileManager.Location sourceLoc = javax.tools.StandardLocation.SOURCE_PATH;
 			fileManager.setLocation(sourceLoc, fins);
 
-			Set<JavaFileObject.Kind> fileTypes = new HashSet<JavaFileObject.Kind>();
+			Set<JavaFileObject.Kind> fileTypes = new HashSet<>();
 			fileTypes.add(JavaFileObject.Kind.SOURCE);
 
 			Iterable<? extends JavaFileObject> compilationUnits = fileManager.list(sourceLoc, "", fileTypes, true);
@@ -105,7 +102,7 @@ public class FileManagerTests extends TestCase {
 			}
 			assertEquals("Wrong contents", "X.java", String.valueOf(builder));
 
-			List<File> files = new ArrayList<File>();
+			List<File> files = new ArrayList<>();
 			files.add(dir);
 			try {
 				fileManager.getJavaFileObjectsFromFiles(files);
@@ -151,12 +148,12 @@ public class FileManagerTests extends TestCase {
 		try {
 			StandardJavaFileManager fileManager = new EclipseFileManager(Locale.getDefault(), Charset.defaultCharset());
 
-			List<File> fins = new ArrayList<File>();
+			List<File> fins = new ArrayList<>();
 			fins.add(dir);
 			JavaFileManager.Location sourceLoc = javax.tools.StandardLocation.SOURCE_PATH;
 			fileManager.setLocation(sourceLoc, fins);
 
-			Set<JavaFileObject.Kind> fileTypes = new HashSet<JavaFileObject.Kind>();
+			Set<JavaFileObject.Kind> fileTypes = new HashSet<>();
 			fileTypes.add(JavaFileObject.Kind.OTHER);
 
 			Iterable<? extends JavaFileObject> compilationUnits = fileManager.list(sourceLoc, "", fileTypes, true);

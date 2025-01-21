@@ -16,14 +16,12 @@ package org.eclipse.jdt.core.formatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
-
 import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
 import org.eclipse.jdt.internal.compiler.util.Util;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.DefaultLineTracker;
 import org.eclipse.jface.text.ILineTracker;
 import org.eclipse.jface.text.IRegion;
-
 import org.eclipse.text.edits.ReplaceEdit;
 
 /**
@@ -32,7 +30,6 @@ import org.eclipse.text.edits.ReplaceEdit;
  * @since 3.2
  * @noinstantiate This class is not intended to be instantiated by clients.
  */
-@SuppressWarnings({ "rawtypes", "unchecked" })
 public final class IndentManipulation {
 
 	private IndentManipulation() {
@@ -182,7 +179,7 @@ public final class IndentManipulation {
 	/**
 	 * Removes the given number of indentation units from a given line. If the line
 	 * has less indent than the given indentUnitsToRemove, all the available indentation is removed.
-	 * If <code>indentsToRemove <= 0 or indent == 0</code> the line is returned.
+	 * If <code>indentsToRemove &lt;= 0 or indent == 0</code> the line is returned.
 	 *
 	 * @param line the line to trim
 	 * @param tabWidth the width of one tab in space equivalents
@@ -336,13 +333,13 @@ public final class IndentManipulation {
 			throw new IllegalArgumentException();
 		}
 
-		ArrayList result= new ArrayList();
+		ArrayList<ReplaceEdit> result= new ArrayList<>();
 		try {
 			ILineTracker tracker= new DefaultLineTracker();
 			tracker.set(source);
 			int nLines= tracker.getNumberOfLines();
 			if (nLines == 1)
-				return (ReplaceEdit[])result.toArray(new ReplaceEdit[result.size()]);
+				return result.toArray(ReplaceEdit[]::new);
 			for (int i= 1; i < nLines; i++) {
 				IRegion region= tracker.getLineInformation(i);
 				int offset= region.getOffset();
@@ -358,12 +355,12 @@ public final class IndentManipulation {
 		} catch (BadLocationException cannotHappen) {
 			// can not happen
 		}
-		return (ReplaceEdit[])result.toArray(new ReplaceEdit[result.size()]);
+		return result.toArray(ReplaceEdit[]::new);
 	}
 
 	/*
 	 * Returns the index where the indent of the given size ends.
-	 * Returns <code>-1<code> if the line isn't prefixed with an indent of
+	 * Returns <code>-1</code> if the line isn't prefixed with an indent of
 	 * the given number of indents.
 	 */
 	private static int indexOfIndent(CharSequence line, int numberOfIndentUnits, int tabWidth, int indentWidth) {
@@ -410,7 +407,7 @@ public final class IndentManipulation {
 	 * @return the tab width
 	 * @exception IllegalArgumentException if the given <code>options</code> is null
 	 */
-	public static int getTabWidth(Map options) {
+	public static int getTabWidth(Map<String, String> options) {
 		if (options == null) {
 			throw new IllegalArgumentException();
 		}
@@ -426,7 +423,7 @@ public final class IndentManipulation {
 	 * @return the indent width
 	 * @exception IllegalArgumentException if the given <code>options</code> is null
 	 */
-	public static int getIndentWidth(Map options) {
+	public static int getIndentWidth(Map<String, String> options) {
 		if (options == null) {
 			throw new IllegalArgumentException();
 		}
@@ -438,9 +435,9 @@ public final class IndentManipulation {
 		return tabWidth;
 	}
 
-	private static int getIntValue(Map options, String key, int def) {
+	private static int getIntValue(Map<String, String> options, String key, int def) {
 		try {
-			return Integer.parseInt((String) options.get(key));
+			return Integer.parseInt(options.get(key));
 		} catch (NumberFormatException e) {
 			return def;
 		}

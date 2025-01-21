@@ -14,14 +14,15 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.ast;
 
-import static org.eclipse.jdt.internal.compiler.problem.ProblemSeverities.*;
+import static org.eclipse.jdt.internal.compiler.problem.ProblemSeverities.AbortCompilation;
+import static org.eclipse.jdt.internal.compiler.problem.ProblemSeverities.AbortCompilationUnit;
+import static org.eclipse.jdt.internal.compiler.problem.ProblemSeverities.AbortMethod;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
 import org.eclipse.jdt.core.compiler.CategorizedProblem;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.compiler.IProblem;
@@ -146,8 +147,8 @@ public class ModuleDeclaration extends ASTNode implements ReferenceContext {
 
 		this.hasResolvedModuleDirectives = true;
 
-		Set<ModuleBinding> requiredModules = new HashSet<ModuleBinding>();
-		Set<ModuleBinding> requiredTransitiveModules = new HashSet<ModuleBinding>();
+		Set<ModuleBinding> requiredModules = new HashSet<>();
+		Set<ModuleBinding> requiredTransitiveModules = new HashSet<>();
 		for(int i = 0; i < this.requiresCount; i++) {
 			RequiresStatement ref = this.requires[i];
 			if (ref != null && ref.resolve(cuScope) != null) {
@@ -248,7 +249,7 @@ public class ModuleDeclaration extends ASTNode implements ReferenceContext {
 		this.hasResolvedTypeDirectives = true;
 		ASTNode.resolveAnnotations(this.scope, this.annotations, this.binding);
 
-		Set<TypeBinding> allTypes = new HashSet<TypeBinding>();
+		Set<TypeBinding> allTypes = new HashSet<>();
 		for(int i = 0; i < this.usesCount; i++) {
 			TypeBinding serviceBinding = this.uses[i].serviceInterface.resolveType(this.scope);
 			if (serviceBinding != null && serviceBinding.isValidBinding()) {
@@ -360,7 +361,7 @@ public class ModuleDeclaration extends ASTNode implements ReferenceContext {
 		visitor.visit(this, unitScope);
 	}
 
-	public StringBuffer printHeader(int indent, StringBuffer output) {
+	public StringBuilder printHeader(int indent, StringBuilder output) {
 		if (this.annotations != null) {
 			for (int i = 0; i < this.annotations.length; i++) {
 				this.annotations[i].print(indent, output);
@@ -376,7 +377,7 @@ public class ModuleDeclaration extends ASTNode implements ReferenceContext {
 		output.append(CharOperation.charToString(this.moduleName));
 		return output;
 	}
-	public StringBuffer printBody(int indent, StringBuffer output) {
+	public StringBuilder printBody(int indent, StringBuilder output) {
 		output.append(" {"); //$NON-NLS-1$
 		if (this.requires != null) {
 			for(int i = 0; i < this.requiresCount; i++) {
@@ -414,7 +415,7 @@ public class ModuleDeclaration extends ASTNode implements ReferenceContext {
 	}
 
 	@Override
-	public StringBuffer print(int indent, StringBuffer output) {
+	public StringBuilder print(int indent, StringBuilder output) {
 		//
 		printIndent(indent, output);
 		printHeader(0, output);
@@ -453,11 +454,6 @@ public class ModuleDeclaration extends ASTNode implements ReferenceContext {
 	@Override
 	public void tagAsHavingErrors() {
 		this.ignoreFurtherInvestigation = true;
-	}
-
-	@Override
-	public void tagAsHavingIgnoredMandatoryErrors(int problemId) {
-		// Nothing to do for this context;
 	}
 
 	public String getModuleVersion() {

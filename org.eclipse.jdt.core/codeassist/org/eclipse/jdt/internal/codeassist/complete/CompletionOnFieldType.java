@@ -35,7 +35,8 @@ package org.eclipse.jdt.internal.codeassist.complete;
  */
 
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.internal.compiler.ast.*;
+import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
 
 public class CompletionOnFieldType extends FieldDeclaration implements CompletionNode {
 	public boolean isLocalVariable;
@@ -53,7 +54,7 @@ public CompletionOnFieldType(TypeReference type, boolean isLocalVariable){
 }
 
 @Override
-public StringBuffer printStatement(int tab, StringBuffer output) {
+public StringBuilder printStatement(int tab, StringBuilder output) {
 	return this.type.print(tab, output).append(';');
 }
 }

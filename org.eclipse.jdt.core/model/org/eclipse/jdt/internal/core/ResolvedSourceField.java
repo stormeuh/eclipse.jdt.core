@@ -28,7 +28,10 @@ public class ResolvedSourceField extends SourceField {
 		super(parent, name);
 		this.uniqueKey = uniqueKey;
 	}
-
+	public ResolvedSourceField(JavaElement parent, String name, String uniqueKey, int occurrenceCount) {
+		super(parent, name, occurrenceCount);
+		this.uniqueKey = uniqueKey;
+	}
 	@Override
 	public String getKey() {
 		return this.uniqueKey;
@@ -40,10 +43,10 @@ public class ResolvedSourceField extends SourceField {
 	}
 
 	/**
-	 * @private Debugging purposes
+	 * for debugging only
 	 */
 	@Override
-	protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+	protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 		super.toStringInfo(tab, buffer, info, showResolvedInfo);
 		if (showResolvedInfo) {
 			buffer.append(" {key="); //$NON-NLS-1$
@@ -53,9 +56,7 @@ public class ResolvedSourceField extends SourceField {
 	}
 
 	@Override
-	public JavaElement unresolved() {
-		SourceRefElement handle = new SourceField(this.getParent(), this.name);
-		handle.occurrenceCount = this.occurrenceCount;
-		return handle;
+	public SourceField unresolved() {
+		return new SourceField(this.getParent(), this.name, this.getOccurrenceCount());
 	}
 }

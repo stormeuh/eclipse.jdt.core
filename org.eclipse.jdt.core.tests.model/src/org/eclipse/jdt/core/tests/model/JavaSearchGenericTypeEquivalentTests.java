@@ -14,11 +14,9 @@
 package org.eclipse.jdt.core.tests.model;
 
 import java.util.List;
-
-import org.eclipse.jdt.core.compiler.CharOperation;
-
 import junit.framework.Test;
 import junit.framework.TestSuite;
+import org.eclipse.jdt.core.compiler.CharOperation;
 
 
 /**
@@ -45,7 +43,7 @@ public class JavaSearchGenericTypeEquivalentTests extends JavaSearchGenericTypeT
 	 * Add line to result only if it is not an erasure match rule.
 	 */
 	@Override
-	void addResultLine(StringBuffer buffer, char[] line) {
+	void addResultLine(StringBuilder buffer, char[] line) {
 		if (!CharOperation.match(RESULT_ERASURE_MATCH, line, true)) {
 			super.addResultLine(buffer, line);
 		}

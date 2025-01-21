@@ -18,14 +18,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.lang.model.SourceVersion;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
-
-import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
-
 import junit.framework.TestCase;
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
 
 public class Java8FilerTests extends TestCase {
 	private static final String FILER_PROC = "org.eclipse.jdt.compiler.apt.tests.processors.filer.Java8FilerProcessor";
@@ -58,7 +55,7 @@ public class Java8FilerTests extends TestCase {
 		File targetFolder = TestUtils.concatPath(BatchTestUtils.getSrcFolderName(), "targets", "filer8");
 		BatchTestUtils.copyResources("targets/filer8", targetFolder);
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-A" + FILER_PROC);
 		// Javac 1.8 doesn't (yet?) support the -1.8 option
 		if (compiler instanceof EclipseCompiler) {

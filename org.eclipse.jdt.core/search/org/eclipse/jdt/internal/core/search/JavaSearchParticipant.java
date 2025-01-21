@@ -13,8 +13,17 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core.search;
 
-import org.eclipse.core.runtime.*;
-import org.eclipse.jdt.core.search.*;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.OperationCanceledException;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.jdt.core.search.IJavaSearchScope;
+import org.eclipse.jdt.core.search.IParallelizable;
+import org.eclipse.jdt.core.search.SearchDocument;
+import org.eclipse.jdt.core.search.SearchParticipant;
+import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.jdt.internal.compiler.lookup.TypeConstants;
 import org.eclipse.jdt.internal.core.index.IndexLocation;
 import org.eclipse.jdt.internal.core.search.indexing.BinaryIndexer;
@@ -32,10 +41,9 @@ import org.eclipse.jdt.internal.core.search.matching.MatchLocator;
  * index queries. It also can map a document path to an actual document (note that documents could live outside
  * the workspace or no exist yet, and thus aren't just resources).
  */
-@SuppressWarnings({"rawtypes", "unchecked"})
 public class JavaSearchParticipant extends SearchParticipant implements IParallelizable {
 
-	private final ThreadLocal indexSelector = new ThreadLocal();
+	private final ThreadLocal<IndexSelector> indexSelector = new ThreadLocal<>();
 
 	/**
 	 * The only reason this field exist is the unfortunate idea to share created source indexer
@@ -147,7 +155,7 @@ public class JavaSearchParticipant extends SearchParticipant implements IParalle
 	}
 
 	private IndexSelector getIndexSelector(SearchPattern pattern, IJavaSearchScope scope) {
-		IndexSelector selector = (IndexSelector) this.indexSelector.get();
+		IndexSelector selector = this.indexSelector.get();
 		if (selector == null) {
 			selector = new IndexSelector(scope, pattern);
 			this.indexSelector.set(selector);

@@ -14,12 +14,11 @@
  *******************************************************************************/
 package org.eclipse.jdt.apt.tests.annotations;
 
+import com.sun.mirror.apt.AnnotationProcessorFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-
-import com.sun.mirror.apt.AnnotationProcessorFactory;
-import java.util.Arrays;
 
 /**
  * Base class for annotation factories. Takes care of supported
@@ -38,7 +37,7 @@ public abstract class BaseFactory implements AnnotationProcessorFactory {
 	 * no extra annotations are supported.
 	 */
 	public BaseFactory(String anno, String... otherAnnos) {
-		_supportedAnnotations = new ArrayList<String>(1 + otherAnnos.length);
+		_supportedAnnotations = new ArrayList<>(1 + otherAnnos.length);
 		_supportedAnnotations.add(anno);
 		_supportedAnnotations.addAll(Arrays.asList(otherAnnos));
 	}

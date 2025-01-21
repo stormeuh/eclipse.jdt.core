@@ -19,10 +19,17 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.impl.*;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.codegen.BranchLabel;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.flow.LoopingFlowContext;
+import org.eclipse.jdt.internal.compiler.flow.UnconditionalFlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
 
 public class DoStatement extends Statement {
 
@@ -212,7 +219,7 @@ public void generateCode(BlockScope currentScope, CodeStream codeStream) {
 }
 
 @Override
-public StringBuffer printStatement(int indent, StringBuffer output) {
+public StringBuilder printStatement(int indent, StringBuilder output) {
 	printIndent(indent, output).append("do"); //$NON-NLS-1$
 	if (this.action == null)
 		output.append(" ;\n"); //$NON-NLS-1$
@@ -225,29 +232,19 @@ public StringBuffer printStatement(int indent, StringBuffer output) {
 }
 
 @Override
-public void resolve(BlockScope scope) {
-	if (containsPatternVariable()) {
-		this.condition.collectPatternVariablesToScope(null, scope);
-		LocalVariableBinding[] patternVariablesInFalseScope = this.condition.getPatternVariablesWhenFalse();
-		TypeBinding type = this.condition.resolveTypeExpecting(scope, TypeBinding.BOOLEAN);
-		this.condition.computeConversion(scope, type, type);
-		if (this.action != null) {
-			this.action.resolve(scope);
-			this.action.promotePatternVariablesIfApplicable(patternVariablesInFalseScope,
-					() -> !this.action.breaksOut(null));
-		}
-	} else {
-		TypeBinding type = this.condition.resolveTypeExpecting(scope, TypeBinding.BOOLEAN);
-		this.condition.computeConversion(scope, type, type);
-		if (this.action != null)
-			this.action.resolve(scope);
-	}
+public LocalVariableBinding[] bindingsWhenComplete() {
+	return this.action != null && !this.action.breaksOut(null) ? this.condition.bindingsWhenFalse() : NO_VARIABLES;
 }
 
 @Override
-public boolean containsPatternVariable() {
-	return this.condition.containsPatternVariable();
+public void resolve(BlockScope scope) {
+	TypeBinding type = this.condition.resolveTypeExpecting(scope, TypeBinding.BOOLEAN);
+	this.condition.computeConversion(scope, type, type);
+	if (this.action != null) {
+		this.action.resolve(scope);
+	}
 }
+
 @Override
 public void traverse(ASTVisitor visitor, BlockScope scope) {
 	if (visitor.visit(this, scope)) {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2023 IBM Corporation and others.
+ * Copyright (c) 2000, 2024 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -35,7 +35,7 @@ import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.Set;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.Compiler;
 import org.eclipse.jdt.internal.compiler.ast.ASTNode;
@@ -64,6 +64,7 @@ public class CompilerOptions {
 	public static final String OPTION_ReportDeprecationWhenOverridingDeprecatedMethod = "org.eclipse.jdt.core.compiler.problem.deprecationWhenOverridingDeprecatedMethod"; //$NON-NLS-1$
 	public static final String OPTION_ReportHiddenCatchBlock = "org.eclipse.jdt.core.compiler.problem.hiddenCatchBlock"; //$NON-NLS-1$
 	public static final String OPTION_ReportUnusedLocal = "org.eclipse.jdt.core.compiler.problem.unusedLocal"; //$NON-NLS-1$
+	public static final String OPTION_ReportUnusedLambdaParameter = "org.eclipse.jdt.core.compiler.problem.unusedLambdaParameter"; //$NON-NLS-1$
 	public static final String OPTION_ReportUnusedParameter = "org.eclipse.jdt.core.compiler.problem.unusedParameter"; //$NON-NLS-1$
 	public static final String OPTION_ReportUnusedExceptionParameter = "org.eclipse.jdt.core.compiler.problem.unusedExceptionParameter"; //$NON-NLS-1$
 	public static final String OPTION_ReportUnusedParameterWhenImplementingAbstract = "org.eclipse.jdt.core.compiler.problem.unusedParameterWhenImplementingAbstract"; //$NON-NLS-1$
@@ -124,7 +125,6 @@ public class CompilerOptions {
 	public static final String OPTION_TaskTags = "org.eclipse.jdt.core.compiler.taskTags"; //$NON-NLS-1$
 	public static final String OPTION_TaskPriorities = "org.eclipse.jdt.core.compiler.taskPriorities"; //$NON-NLS-1$
 	public static final String OPTION_TaskCaseSensitive = "org.eclipse.jdt.core.compiler.taskCaseSensitive"; //$NON-NLS-1$
-	public static final String OPTION_InlineJsr = "org.eclipse.jdt.core.compiler.codegen.inlineJsrBytecode"; //$NON-NLS-1$
 	public static final String OPTION_ShareCommonFinallyBlocks = "org.eclipse.jdt.core.compiler.codegen.shareCommonFinallyBlocks"; //$NON-NLS-1$
 	public static final String OPTION_ReportNullReference = "org.eclipse.jdt.core.compiler.problem.nullReference"; //$NON-NLS-1$
 	public static final String OPTION_ReportPotentialNullReference = "org.eclipse.jdt.core.compiler.problem.potentialNullReference"; //$NON-NLS-1$
@@ -167,9 +167,17 @@ public class CompilerOptions {
 	public static final String OPTION_ReportMethodCanBePotentiallyStatic = "org.eclipse.jdt.core.compiler.problem.reportMethodCanBePotentiallyStatic";  //$NON-NLS-1$
 	public static final String OPTION_ReportRedundantSpecificationOfTypeArguments =  "org.eclipse.jdt.core.compiler.problem.redundantSpecificationOfTypeArguments"; //$NON-NLS-1$
 
+	// resource leak analysis:
 	public static final String OPTION_ReportUnclosedCloseable = "org.eclipse.jdt.core.compiler.problem.unclosedCloseable"; //$NON-NLS-1$
 	public static final String OPTION_ReportPotentiallyUnclosedCloseable = "org.eclipse.jdt.core.compiler.problem.potentiallyUnclosedCloseable"; //$NON-NLS-1$
 	public static final String OPTION_ReportExplicitlyClosedAutoCloseable = "org.eclipse.jdt.core.compiler.problem.explicitlyClosedAutoCloseable"; //$NON-NLS-1$
+	public static final String OPTION_ReportInsufficientResourceManagement = "org.eclipse.jdt.core.compiler.problem.insufficientResourceAnalysis"; //$NON-NLS-1$
+	public static final String OPTION_ReportIncompatibleOwningContract = "org.eclipse.jdt.core.compiler.problem.incompatibleOwningContract"; //$NON-NLS-1$
+	public static final String OPTION_AnnotationBasedResourceAnalysis = "org.eclipse.jdt.core.compiler.annotation.resourceanalysis"; //$NON-NLS-1$
+	public static final String OPTION_OwningAnnotationName = "org.eclipse.jdt.core.compiler.annotation.owning"; //$NON-NLS-1$
+	public static final String OPTION_NotOwningAnnotationName = "org.eclipse.jdt.core.compiler.annotation.notowning"; //$NON-NLS-1$
+	static final char[][] DEFAULT_OWNING_ANNOTATION_NAME = CharOperation.splitOn('.', "org.eclipse.jdt.annotation.Owning".toCharArray()); //$NON-NLS-1$
+	static final char[][] DEFAULT_NOTOWNING_ANNOTATION_NAME = CharOperation.splitOn('.', "org.eclipse.jdt.annotation.NotOwning".toCharArray()); //$NON-NLS-1$
 
 	public static final String OPTION_ReportNullSpecViolation = "org.eclipse.jdt.core.compiler.problem.nullSpecViolation";  //$NON-NLS-1$
 	public static final String OPTION_ReportNullAnnotationInferenceConflict = "org.eclipse.jdt.core.compiler.problem.nullAnnotationInferenceConflict";  //$NON-NLS-1$
@@ -213,6 +221,8 @@ public class CompilerOptions {
 	public static final String OPTION_IgnoreUnnamedModuleForSplitPackage = "org.eclipse.jdt.core.compiler.ignoreUnnamedModuleForSplitPackage"; //$NON-NLS-1$
 
 	public static final String OPTION_UseStringConcatFactory = "org.eclipse.jdt.core.compiler.codegen.useStringConcatFactory"; //$NON-NLS-1$
+
+	public static final String OPTION_validateOperandStack = "org.eclipse.jdt.core.compiler.codegen.validateOperandStack"; //$NON-NLS-1$
 	/**
 	 * Possible values for configurable options
 	 */
@@ -243,10 +253,31 @@ public class CompilerOptions {
 	public static final String VERSION_19 = "19"; //$NON-NLS-1$
 	public static final String VERSION_20 = "20"; //$NON-NLS-1$
 	public static final String VERSION_21 = "21"; //$NON-NLS-1$
+	public static final String VERSION_22 = "22"; //$NON-NLS-1$
+	public static final String VERSION_23 = "23"; //$NON-NLS-1$
 	/*
 	 * Note: Whenever a new version is added, make sure getLatestVersion()
 	 * is updated with it.
 	 */
+
+	/**
+	 * Unsupported JLS versions
+	 */
+	/*
+	 * Note: Whenever a new version is obsoleted, make sure getFirstVersion() is updated.
+	 */
+	public static Set<String> UNSUPPORTED_VERSIONS = Set.of(
+			VERSION_1_1,
+			VERSION_1_2,
+			VERSION_1_3,
+			VERSION_1_4,
+			VERSION_JSR14,
+			VERSION_CLDC1_1,
+			VERSION_1_5,
+			VERSION_1_6,
+			VERSION_1_7
+			);
+
 	public static final String ERROR = "error"; //$NON-NLS-1$
 	public static final String WARNING = "warning"; //$NON-NLS-1$
 	public static final String INFO = "info"; //$NON-NLS-1$
@@ -337,9 +368,14 @@ public class CompilerOptions {
 	public static final int MethodCanBeStatic = IrritantSet.GROUP2 | ASTNode.Bit5;
 	public static final int MethodCanBePotentiallyStatic = IrritantSet.GROUP2 | ASTNode.Bit6;
 	public static final int RedundantSpecificationOfTypeArguments = IrritantSet.GROUP2 | ASTNode.Bit7;
+
+	// resource leak analysis:
 	public static final int UnclosedCloseable = IrritantSet.GROUP2 | ASTNode.Bit8;
 	public static final int PotentiallyUnclosedCloseable = IrritantSet.GROUP2 | ASTNode.Bit9;
 	public static final int ExplicitlyClosedAutoCloseable = IrritantSet.GROUP2 | ASTNode.Bit10;
+	// see also InsufficientResourceManagement in group 3
+
+	// null analysis:
 	public static final int NullSpecViolation = IrritantSet.GROUP2 | ASTNode.Bit11;
 	public static final int NullAnnotationInferenceConflict = IrritantSet.GROUP2 | ASTNode.Bit12;
 	public static final int NullUncheckedConversion = IrritantSet.GROUP2 | ASTNode.Bit13;
@@ -359,6 +395,11 @@ public class CompilerOptions {
 	public static final int PreviewFeatureUsed = IrritantSet.GROUP2 | ASTNode.Bit27;
 	public static final int SuppressWarningsNotAnalysed = IrritantSet.GROUP2 | ASTNode.Bit28;
 	public static final int AnnotatedTypeArgumentToUnannotated = IrritantSet.GROUP2 | ASTNode.Bit29;
+
+	// group 3
+	public static final int InsufficientResourceManagement = IrritantSet.GROUP3 | ASTNode.Bit1;
+	public static final int IncompatibleOwningContract = IrritantSet.GROUP3 | ASTNode.Bit2;
+	public static final int UnusedLambdaParameter = IrritantSet.GROUP3 | ASTNode.Bit3;
 
 
 	// Severity level for handlers
@@ -390,18 +431,16 @@ public class CompilerOptions {
 	public boolean generateGenericSignatureForLambdaExpressions;
 	/** Compliance level for the compiler, refers to a JDK version, e.g. {@link ClassFileConstants#JDK1_4} */
 	public long complianceLevel;
-	/** Original compliance level for the compiler, refers to a JDK version, e.g. {@link ClassFileConstants#JDK1_4},
-	 *  Usually same as the field complianceLevel, though the latter could deviate to create temporary sandbox
-	 *  modes during reconcile operations. See https://bugs.eclipse.org/bugs/show_bug.cgi?id=323633
-	 */
-	public long originalComplianceLevel;
 	/** Java source level, refers to a JDK version, e.g. {@link ClassFileConstants#JDK1_4} */
 	public long sourceLevel;
-	/** Original Java source level, refers to a JDK version, e.g. {@link ClassFileConstants#JDK1_4}
-	 *  Usually same as the field sourceLevel, though the latter could deviate to create temporary sandbox
-	 *  modes during reconcile operations. See https://bugs.eclipse.org/bugs/show_bug.cgi?id=323633
-	 * */
-	public long originalSourceLevel;
+	/**
+	 * Initially requested source version, not necessarily consistent with {@link #sourceLevel} as
+	 * sourceLevel forcibly contain a version that is compatible with ECJ.
+	 * <p>Consumers are free to use {@code sourceLevel} or this
+	 * {@code requestedSourceVersion} value to decide of their behavior.</p>
+	 * <p>May be {@code null}.</p>
+	 */
+	public String requestedSourceVersion;
 	/** VM target level, refers to a JDK version, e.g. {@link ClassFileConstants#JDK1_4} */
 	public long targetJDK;
 	/** Source encoding format */
@@ -464,10 +503,6 @@ public class CompilerOptions {
 	public int reportMissingJavadocCommentsVisibility;
 	/** Specify if need to flag missing javadoc comment for overriding method */
 	public boolean reportMissingJavadocCommentsOverriding;
-	/** Indicate whether the JSR bytecode should be inlined to avoid its presence in classfile */
-	public boolean inlineJsrBytecode;
-	/** Indicate whether common escaping finally blocks should be shared */
-	public boolean shareCommonFinallyBlocks;
 	/** Indicate if @SuppressWarning annotations are activated */
 	public boolean suppressWarnings;
 	/** Indicate if @SuppressWarning annotations should also suppress optional errors */
@@ -514,15 +549,23 @@ public class CompilerOptions {
 	public String[] nonNullByDefaultAnnotationSecondaryNames = NO_STRINGS;
 	/** TagBits-encoded default for non-annotated types. */
 	public long intendedDefaultNonNullness; // 0 or TagBits#AnnotationNonNull
+
 	/** Should resources (objects of type Closeable) be analysed for matching calls to close()? */
 	public boolean analyseResourceLeaks;
+	/** Should an owning-annotation be evaluated for improved analysis of resource leaks? */
+	public boolean isAnnotationBasedResourceAnalysisEnabled;
+	/** Name of the annotation which the resource leak analysis will use as 'owning' */
+	public char[][] owningAnnotationName;
+	/** Name of the annotation which the resource leak analysis will use as 'not-owning' */
+	public char[][] notOwningAnnotationName;
+
 	/** Should missing enum cases be reported even if a default case exists in the same switch? */
 	public boolean reportMissingEnumCaseDespiteDefault;
 
 	/** When checking for unlikely argument types of of Map.get() et al, perform strict analysis against the expected type */
 	public boolean reportUnlikelyCollectionMethodArgumentTypeStrict;
 
-	/** Should the compiler tolerate illegal ambiguous varargs invocation in compliance < 1.7
+	/** Should the compiler tolerate illegal ambiguous varargs invocation in {@code compliance < 1.7}
 	 * to be bug compatible with javac? (bug 383780) */
 	public static boolean tolerateIllegalAmbiguousVarargsInvocation;
 	{
@@ -543,6 +586,8 @@ public class CompilerOptions {
 
 	/** Not directly configurable, derived from other options by LookupEnvironment.usesNullTypeAnnotations() */
 	public Boolean useNullTypeAnnotations = null;
+	/** Not directly configurable, derived from other options by LookupEnvironment.usesOwningAnnotation() */
+	public Boolean useOwningAnnotations;
 
 	/** Master flag to enabled/disable all preview features */
 	public boolean enablePreviewFeatures;
@@ -555,6 +600,9 @@ public class CompilerOptions {
 
 	/** Should the compiler use the StringConcatFactory for String concatenation expressions in the produced binary */
 	public boolean useStringConcatFactory;
+
+	/** Should the compiler validate VM's (simulated) operand stack during code generation? */
+	public boolean validateOperandStack;
 
 	// keep in sync with warningTokenToIrritant and warningTokenFromIrritant
 	public final static String[] warningTokens = {
@@ -615,10 +663,22 @@ public class CompilerOptions {
 	}
 
 	/**
+	 * Return the first (oldest) Java language version supported by the Eclipse compiler
+	 */
+	public static String getFirstSupportedJavaVersion() {
+		return VERSION_1_8;
+	}
+	/**
+	 * Return the first (oldest) Java language level supported by the Eclipse compiler
+	 */
+	public static long getFirstSupportedJdkLevel() {
+		return ClassFileConstants.JDK1_8;
+	}
+	/**
 	 * Return the latest Java language version supported by the Eclipse compiler
 	 */
 	public static String getLatestVersion() {
-		return VERSION_21;
+		return VERSION_23;
 	}
 	/**
 	 * Return the most specific option key controlling this irritant. Note that in some case, some irritant is controlled by
@@ -642,6 +702,8 @@ public class CompilerOptions {
 				return OPTION_ReportHiddenCatchBlock;
 			case UnusedLocalVariable :
 				return OPTION_ReportUnusedLocal;
+			case UnusedLambdaParameter:
+				return OPTION_ReportUnusedLambdaParameter;
 			case UnusedArgument :
 				return OPTION_ReportUnusedParameter;
 			case UnusedExceptionParameter :
@@ -768,12 +830,20 @@ public class CompilerOptions {
 				return OPTION_ReportMissingNonNullByDefaultAnnotation;
 			case RedundantSpecificationOfTypeArguments :
 				return OPTION_ReportRedundantSpecificationOfTypeArguments;
+
+			// resource leak analysis:
 			case UnclosedCloseable :
 				return OPTION_ReportUnclosedCloseable;
 			case PotentiallyUnclosedCloseable :
 				return OPTION_ReportPotentiallyUnclosedCloseable;
 			case ExplicitlyClosedAutoCloseable :
 				return OPTION_ReportExplicitlyClosedAutoCloseable;
+			case InsufficientResourceManagement:
+				return OPTION_ReportInsufficientResourceManagement;
+			case IncompatibleOwningContract:
+				return OPTION_ReportIncompatibleOwningContract;
+
+			// null analysis:
 			case NullSpecViolation :
 				return OPTION_ReportNullSpecViolation;
 			case NullAnnotationInferenceConflict :
@@ -790,6 +860,7 @@ public class CompilerOptions {
 				return OPTION_ReportNonNullTypeVariableFromLegacyInvocation;
 			case AnnotatedTypeArgumentToUnannotated:
 				return OPTION_ReportAnnotatedTypeArgumentToUnannotated;
+
 			case UnlikelyCollectionMethodArgumentType:
 				return OPTION_ReportUnlikelyCollectionMethodArgumentType;
 			case UnlikelyEqualsArgumentType:
@@ -936,7 +1007,6 @@ public class CompilerOptions {
 	public static String[] warningOptionNames() {
 		String[] result = {
 			OPTION_ReportAnnotationSuperInterface,
-			OPTION_ReportAssertIdentifier,
 			OPTION_ReportAutoboxing,
 			OPTION_ReportComparingIdentical,
 			OPTION_ReportDeadCode,
@@ -946,7 +1016,6 @@ public class CompilerOptions {
 			OPTION_ReportDeprecationWhenOverridingDeprecatedMethod,
 			OPTION_ReportDiscouragedReference,
 			OPTION_ReportEmptyStatement,
-			OPTION_ReportEnumIdentifier,
 			OPTION_ReportFallthroughCase,
 			OPTION_ReportFieldHiding,
 			OPTION_ReportFinallyBlockNotCompletingNormally,
@@ -1023,9 +1092,18 @@ public class CompilerOptions {
 			OPTION_ReportUnusedTypeArgumentsForMethodInvocation,
 			OPTION_ReportUnusedWarningToken,
 			OPTION_ReportVarargsArgumentNeedCast,
+
+			// resource leak analysis:
 			OPTION_ReportUnclosedCloseable,
 			OPTION_ReportPotentiallyUnclosedCloseable,
 			OPTION_ReportExplicitlyClosedAutoCloseable,
+			OPTION_ReportInsufficientResourceManagement,
+			OPTION_ReportIncompatibleOwningContract,
+			OPTION_AnnotationBasedResourceAnalysis,
+			OPTION_OwningAnnotationName,
+			OPTION_NotOwningAnnotationName,
+
+			// null analysis:
 			OPTION_AnnotationBasedNullAnalysis,
 			OPTION_NonNullAnnotationName,
 			OPTION_NullableAnnotationName,
@@ -1040,6 +1118,7 @@ public class CompilerOptions {
 			OPTION_InheritNullAnnotations,
 			OPTION_ReportNonnullParameterAnnotationDropped,
 			OPTION_ReportAnnotatedTypeArgumentToUnannotated,
+
 			OPTION_ReportUnlikelyCollectionMethodArgumentType,
 			OPTION_ReportUnlikelyEqualsArgumentType,
 			OPTION_ReportAPILeak,
@@ -1101,6 +1180,7 @@ public class CompilerOptions {
 			case UnusedImport :
 			case UnusedLabel :
 			case UnusedLocalVariable :
+			case UnusedLambdaParameter :
 			case UnusedObjectAllocation :
 			case UnusedArgument : 		// OPTION_ReportUnusedParameter
 			case UnusedPrivateMember :
@@ -1133,6 +1213,7 @@ public class CompilerOptions {
 			case PotentiallyUnclosedCloseable:
 			case UnclosedCloseable:
 			case ExplicitlyClosedAutoCloseable:
+			case InsufficientResourceManagement:
 				return "resource"; //$NON-NLS-1$
 			case InvalidJavadoc :
 			case MissingJavadocComments :
@@ -1269,6 +1350,7 @@ public class CompilerOptions {
 		optionsMap.put(OPTION_ReportDeprecationWhenOverridingDeprecatedMethod, this.reportDeprecationWhenOverridingDeprecatedMethod ? ENABLED : DISABLED);
 		optionsMap.put(OPTION_ReportHiddenCatchBlock, getSeverityString(MaskedCatchBlock));
 		optionsMap.put(OPTION_ReportUnusedLocal, getSeverityString(UnusedLocalVariable));
+		optionsMap.put(OPTION_ReportUnusedLambdaParameter, getSeverityString(UnusedLambdaParameter));
 		optionsMap.put(OPTION_ReportUnusedParameter, getSeverityString(UnusedArgument));
 		optionsMap.put(OPTION_ReportUnusedExceptionParameter, getSeverityString(UnusedExceptionParameter));
 		optionsMap.put(OPTION_ReportUnusedImport, getSeverityString(UnusedImport));
@@ -1285,8 +1367,8 @@ public class CompilerOptions {
 		optionsMap.put(OPTION_ReportTypeParameterHiding, getSeverityString(TypeHiding));
 		optionsMap.put(OPTION_ReportPossibleAccidentalBooleanAssignment, getSeverityString(AccidentalBooleanAssign));
 		optionsMap.put(OPTION_ReportEmptyStatement, getSeverityString(EmptyStatement));
-		optionsMap.put(OPTION_ReportAssertIdentifier, getSeverityString(AssertUsedAsAnIdentifier));
-		optionsMap.put(OPTION_ReportEnumIdentifier, getSeverityString(EnumUsedAsAnIdentifier));
+		optionsMap.put(OPTION_ReportAssertIdentifier, ERROR);
+		optionsMap.put(OPTION_ReportEnumIdentifier, ERROR);
 		optionsMap.put(OPTION_ReportUndocumentedEmptyBlock, getSeverityString(UndocumentedEmptyBlock));
 		optionsMap.put(OPTION_ReportUnnecessaryTypeCheck, getSeverityString(UnnecessaryTypeCheck));
 		optionsMap.put(OPTION_ReportUnnecessaryElse, getSeverityString(UnnecessaryElse));
@@ -1343,8 +1425,7 @@ public class CompilerOptions {
 		optionsMap.put(OPTION_ReportUnusedParameterIncludeDocCommentReference, this.reportUnusedParameterIncludeDocCommentReference ? ENABLED : DISABLED);
 		optionsMap.put(OPTION_ReportSpecialParameterHidingField, this.reportSpecialParameterHidingField ? ENABLED : DISABLED);
 		optionsMap.put(OPTION_MaxProblemPerUnit, String.valueOf(this.maxProblemsPerUnit));
-		optionsMap.put(OPTION_InlineJsr, this.inlineJsrBytecode ? ENABLED : DISABLED);
-		optionsMap.put(OPTION_ShareCommonFinallyBlocks, this.shareCommonFinallyBlocks ? ENABLED : DISABLED);
+		optionsMap.put(OPTION_ShareCommonFinallyBlocks, DISABLED);
 		optionsMap.put(OPTION_ReportNullReference, getSeverityString(NullReference));
 		optionsMap.put(OPTION_ReportPotentialNullReference, getSeverityString(PotentialNullReference));
 		optionsMap.put(OPTION_ReportRedundantNullCheck, getSeverityString(RedundantNullCheck));
@@ -1371,9 +1452,18 @@ public class CompilerOptions {
 		optionsMap.put(OPTION_ReportMethodCanBeStatic, getSeverityString(MethodCanBeStatic));
 		optionsMap.put(OPTION_ReportMethodCanBePotentiallyStatic, getSeverityString(MethodCanBePotentiallyStatic));
 		optionsMap.put(OPTION_ReportRedundantSpecificationOfTypeArguments, getSeverityString(RedundantSpecificationOfTypeArguments));
+
+		// resource leak analysis:
 		optionsMap.put(OPTION_ReportUnclosedCloseable, getSeverityString(UnclosedCloseable));
 		optionsMap.put(OPTION_ReportPotentiallyUnclosedCloseable, getSeverityString(PotentiallyUnclosedCloseable));
 		optionsMap.put(OPTION_ReportExplicitlyClosedAutoCloseable, getSeverityString(ExplicitlyClosedAutoCloseable));
+		optionsMap.put(OPTION_ReportInsufficientResourceManagement, getSeverityString(InsufficientResourceManagement));
+		optionsMap.put(OPTION_ReportIncompatibleOwningContract, getSeverityString(IncompatibleOwningContract));
+		optionsMap.put(OPTION_AnnotationBasedResourceAnalysis, this.isAnnotationBasedResourceAnalysisEnabled ? ENABLED : DISABLED);
+		optionsMap.put(OPTION_OwningAnnotationName, String.valueOf(CharOperation.concatWith(this.owningAnnotationName, '.')));
+		optionsMap.put(OPTION_NotOwningAnnotationName, String.valueOf(CharOperation.concatWith(this.notOwningAnnotationName, '.')));
+
+		// null analysis:
 		optionsMap.put(OPTION_AnnotationBasedNullAnalysis, this.isAnnotationBasedNullAnalysisEnabled ? ENABLED : DISABLED);
 		optionsMap.put(OPTION_ReportNullSpecViolation, getSeverityString(NullSpecViolation));
 		optionsMap.put(OPTION_ReportNullAnnotationInferenceConflict, getSeverityString(NullAnnotationInferenceConflict));
@@ -1404,6 +1494,7 @@ public class CompilerOptions {
 		optionsMap.put(OPTION_ReportSuppressWarningNotFullyAnalysed, getSeverityString(SuppressWarningsNotAnalysed));
 		optionsMap.put(OPTION_IgnoreUnnamedModuleForSplitPackage, this.ignoreUnnamedModuleForSplitPackage ? ENABLED : DISABLED);
 		optionsMap.put(OPTION_UseStringConcatFactory, this.useStringConcatFactory ? ENABLED : DISABLED);
+		optionsMap.put(OPTION_validateOperandStack, this.validateOperandStack ? ENABLED : DISABLED);
 		return optionsMap;
 	}
 
@@ -1482,9 +1573,12 @@ public class CompilerOptions {
 
 		// by default only lines and source attributes are generated.
 		this.produceDebugAttributes = ClassFileConstants.ATTR_SOURCE | ClassFileConstants.ATTR_LINES;
-		this.complianceLevel = this.originalComplianceLevel = ClassFileConstants.JDK1_4; // by default be compliant with 1.4
-		this.sourceLevel = this.originalSourceLevel = ClassFileConstants.JDK1_3; //1.3 source behavior by default
-		this.targetJDK = ClassFileConstants.JDK1_2; // default generates for JVM1.2
+
+		// by default be compliant with first supported version
+		final long firstSupportedJdkLevel = getFirstSupportedJdkLevel();
+		this.complianceLevel = firstSupportedJdkLevel;
+		this.sourceLevel = firstSupportedJdkLevel;
+		this.targetJDK = firstSupportedJdkLevel;
 
 		this.defaultEncoding = null; // will use the platform default encoding
 
@@ -1544,10 +1638,6 @@ public class CompilerOptions {
 		this.reportMissingJavadocCommentsVisibility = ClassFileConstants.AccPublic;
 		this.reportMissingJavadocCommentsOverriding = false;
 
-		// JSR bytecode inlining and sharing
-		this.inlineJsrBytecode = false;
-		this.shareCommonFinallyBlocks = false;
-
 		// javadoc comment support
 		this.docCommentSupport = false;
 
@@ -1598,6 +1688,9 @@ public class CompilerOptions {
 		this.inheritNullAnnotations = false;
 
 		this.analyseResourceLeaks = true;
+		this.isAnnotationBasedResourceAnalysisEnabled = false;
+		this.owningAnnotationName = DEFAULT_OWNING_ANNOTATION_NAME;
+		this.notOwningAnnotationName = DEFAULT_NOTOWNING_ANNOTATION_NAME;
 
 		this.reportMissingEnumCaseDespiteDefault = false;
 
@@ -1607,6 +1700,7 @@ public class CompilerOptions {
 		this.enableJdtDebugCompileMode = false;
 		this.ignoreUnnamedModuleForSplitPackage = false;
 		this.useStringConcatFactory = true;
+		this.validateOperandStack = true;
 	}
 
 	public void set(Map<String, String> optionsMap) {
@@ -1676,11 +1770,11 @@ public class CompilerOptions {
 		}
 		if ((optionValue = optionsMap.get(OPTION_Compliance)) != null) {
 			long level = versionToJdkLevel(optionValue);
-			if (level != 0) this.complianceLevel = this.originalComplianceLevel = level;
+			if (level != 0) this.complianceLevel = level;
 		}
-		if ((optionValue = optionsMap.get(OPTION_Source)) != null) {
+		if ((this.requestedSourceVersion = optionValue = optionsMap.get(OPTION_Source)) != null) {
 			long level = versionToJdkLevel(optionValue);
-			if (level != 0) this.sourceLevel = this.originalSourceLevel = level;
+			if (level != 0) this.sourceLevel = level;
 		}
 		if ((optionValue = optionsMap.get(OPTION_TargetPlatform)) != null) {
 			long level = versionToJdkLevel(optionValue);
@@ -1690,7 +1784,6 @@ public class CompilerOptions {
 				}
 				this.targetJDK = level;
 			}
-			if (this.targetJDK >= ClassFileConstants.JDK1_5) this.inlineJsrBytecode = true; // forced from 1.5 mode on
 		}
 		if ((optionValue = optionsMap.get(OPTION_Encoding)) != null) {
 			this.defaultEncoding = null;
@@ -1778,21 +1871,8 @@ public class CompilerOptions {
 				this.isTaskCaseSensitive = false;
 			}
 		}
-		if ((optionValue = optionsMap.get(OPTION_InlineJsr)) != null) {
-			if (this.targetJDK < ClassFileConstants.JDK1_5) { // only optional if target < 1.5 (inlining on from 1.5 on)
-				if (ENABLED.equals(optionValue)) {
-					this.inlineJsrBytecode = true;
-				} else if (DISABLED.equals(optionValue)) {
-					this.inlineJsrBytecode = false;
-				}
-			}
-		}
 		if ((optionValue = optionsMap.get(OPTION_ShareCommonFinallyBlocks)) != null) {
-			if (ENABLED.equals(optionValue)) {
-				this.shareCommonFinallyBlocks = true;
-			} else if (DISABLED.equals(optionValue)) {
-				this.shareCommonFinallyBlocks = false;
-			}
+			// withdrawn support
 		}
 		if ((optionValue = optionsMap.get(OPTION_MethodParametersAttribute)) != null) {
 			if (GENERATE.equals(optionValue)) {
@@ -1849,6 +1929,7 @@ public class CompilerOptions {
 		if ((optionValue = optionsMap.get(OPTION_ReportTerminalDeprecation)) != null) updateSeverity(UsingTerminallyDeprecatedAPI, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportHiddenCatchBlock)) != null) updateSeverity(MaskedCatchBlock, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportUnusedLocal)) != null) updateSeverity(UnusedLocalVariable, optionValue);
+		if ((optionValue = optionsMap.get(OPTION_ReportUnusedLambdaParameter)) != null) updateSeverity(UnusedLambdaParameter, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportUnusedParameter)) != null) updateSeverity(UnusedArgument, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportUnusedExceptionParameter)) != null) updateSeverity(UnusedExceptionParameter, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportUnusedImport)) != null) updateSeverity(UnusedImport, optionValue);
@@ -1862,8 +1943,8 @@ public class CompilerOptions {
 		if ((optionValue = optionsMap.get(OPTION_ReportPossibleAccidentalBooleanAssignment)) != null) updateSeverity(AccidentalBooleanAssign, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportEmptyStatement)) != null) updateSeverity(EmptyStatement, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportNonExternalizedStringLiteral)) != null) updateSeverity(NonExternalizedString, optionValue);
-		if ((optionValue = optionsMap.get(OPTION_ReportAssertIdentifier)) != null) updateSeverity(AssertUsedAsAnIdentifier, optionValue);
-		if ((optionValue = optionsMap.get(OPTION_ReportEnumIdentifier)) != null) updateSeverity(EnumUsedAsAnIdentifier, optionValue);
+		if ((optionValue = optionsMap.get(OPTION_ReportAssertIdentifier)) != null) updateSeverity(AssertUsedAsAnIdentifier, ERROR);
+		if ((optionValue = optionsMap.get(OPTION_ReportEnumIdentifier)) != null) updateSeverity(EnumUsedAsAnIdentifier, ERROR);
 		if ((optionValue = optionsMap.get(OPTION_ReportNonStaticAccessToStatic)) != null) updateSeverity(NonStaticAccessToStatic, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportIndirectStaticAccess)) != null) updateSeverity(IndirectStaticAccess, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportIncompatibleNonInheritedInterfaceMethod)) != null) updateSeverity(IncompatibleNonInheritedInterfaceMethod, optionValue);
@@ -1913,15 +1994,12 @@ public class CompilerOptions {
 		if ((optionValue = optionsMap.get(OPTION_ReportMethodCanBeStatic)) != null) updateSeverity(MethodCanBeStatic, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportMethodCanBePotentiallyStatic)) != null) updateSeverity(MethodCanBePotentiallyStatic, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportRedundantSpecificationOfTypeArguments)) != null) updateSeverity(RedundantSpecificationOfTypeArguments, optionValue);
+		// resource leak analysis:
 		if ((optionValue = optionsMap.get(OPTION_ReportUnclosedCloseable)) != null) updateSeverity(UnclosedCloseable, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportPotentiallyUnclosedCloseable)) != null) updateSeverity(PotentiallyUnclosedCloseable, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportExplicitlyClosedAutoCloseable)) != null) updateSeverity(ExplicitlyClosedAutoCloseable, optionValue);
-		if ((optionValue = optionsMap.get(OPTION_ReportUnusedTypeParameter)) != null) updateSeverity(UnusedTypeParameter, optionValue);
-		if ((optionValue = optionsMap.get(OPTION_ReportUnlikelyCollectionMethodArgumentType)) != null) updateSeverity(UnlikelyCollectionMethodArgumentType, optionValue);
-		if ((optionValue = optionsMap.get(OPTION_ReportUnlikelyCollectionMethodArgumentTypeStrict)) != null) {
-			this.reportUnlikelyCollectionMethodArgumentTypeStrict = ENABLED.equals(optionValue);
-		}
-		if ((optionValue = optionsMap.get(OPTION_ReportUnlikelyEqualsArgumentType)) != null) updateSeverity(UnlikelyEqualsArgumentType, optionValue);
+		if ((optionValue = optionsMap.get(OPTION_ReportInsufficientResourceManagement)) != null) updateSeverity(InsufficientResourceManagement, optionValue);
+		if ((optionValue = optionsMap.get(OPTION_ReportIncompatibleOwningContract)) != null) updateSeverity(IncompatibleOwningContract, optionValue);
 		if (getSeverity(UnclosedCloseable) == ProblemSeverities.Ignore
 				&& getSeverity(PotentiallyUnclosedCloseable) == ProblemSeverities.Ignore
 				&& getSeverity(ExplicitlyClosedAutoCloseable) == ProblemSeverities.Ignore) {
@@ -1929,6 +2007,22 @@ public class CompilerOptions {
 		} else {
 			this.analyseResourceLeaks = true;
 		}
+		if ((optionValue = optionsMap.get(OPTION_AnnotationBasedResourceAnalysis)) != null) {
+			this.storeAnnotations |= this.isAnnotationBasedResourceAnalysisEnabled = ENABLED.equals(optionValue);
+		}
+		if ((optionValue = optionsMap.get(OPTION_OwningAnnotationName)) != null) {
+			this.owningAnnotationName = CharOperation.splitAndTrimOn('.', optionValue.toCharArray());
+		}
+		if ((optionValue = optionsMap.get(OPTION_NotOwningAnnotationName)) != null) {
+			this.notOwningAnnotationName = CharOperation.splitAndTrimOn('.', optionValue.toCharArray());
+		}
+
+		if ((optionValue = optionsMap.get(OPTION_ReportUnusedTypeParameter)) != null) updateSeverity(UnusedTypeParameter, optionValue);
+		if ((optionValue = optionsMap.get(OPTION_ReportUnlikelyCollectionMethodArgumentType)) != null) updateSeverity(UnlikelyCollectionMethodArgumentType, optionValue);
+		if ((optionValue = optionsMap.get(OPTION_ReportUnlikelyCollectionMethodArgumentTypeStrict)) != null) {
+			this.reportUnlikelyCollectionMethodArgumentTypeStrict = ENABLED.equals(optionValue);
+		}
+		if ((optionValue = optionsMap.get(OPTION_ReportUnlikelyEqualsArgumentType)) != null) updateSeverity(UnlikelyEqualsArgumentType, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportAPILeak)) != null) updateSeverity(APILeak, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_ReportUnstableAutoModuleName)) != null) updateSeverity(UnstableAutoModuleName, optionValue);
 		if ((optionValue = optionsMap.get(OPTION_AnnotationBasedNullAnalysis)) != null) {
@@ -2087,13 +2181,14 @@ public class CompilerOptions {
 				this.generateClassFiles = false;
 			}
 		}
+		boolean useAnnotationsForAnalysis = this.isAnnotationBasedNullAnalysisEnabled || this.isAnnotationBasedResourceAnalysisEnabled;
 		if ((optionValue = optionsMap.get(OPTION_Process_Annotations)) != null) {
 			if (ENABLED.equals(optionValue)) {
 				this.processAnnotations = true;
 				this.storeAnnotations = true; // annotation processing requires annotation to be stored
 			} else if (DISABLED.equals(optionValue)) {
 				this.processAnnotations = false;
-				if (!this.isAnnotationBasedNullAnalysisEnabled)
+				if (!useAnnotationsForAnalysis)
 					this.storeAnnotations = false;
 			}
 		}
@@ -2101,7 +2196,7 @@ public class CompilerOptions {
 			if (ENABLED.equals(optionValue)) {
 				this.storeAnnotations = true;
 			} else if (DISABLED.equals(optionValue)) {
-				if (!this.isAnnotationBasedNullAnalysisEnabled && !this.processAnnotations)
+				if (!useAnnotationsForAnalysis  && !this.processAnnotations)
 					this.storeAnnotations = false;
 			}
 		}
@@ -2156,6 +2251,14 @@ public class CompilerOptions {
 				this.useStringConcatFactory = false;
 			}
 		}
+
+		if ((optionValue = optionsMap.get(OPTION_validateOperandStack)) != null) {
+			if (ENABLED.equals(optionValue)) {
+				this.validateOperandStack = true;
+			} else if (DISABLED.equals(optionValue)) {
+				this.validateOperandStack = false;
+			}
+		}
 	}
 
 	private String[] stringToNameList(String optionValue) {
@@ -2187,6 +2290,7 @@ public class CompilerOptions {
 		buf.append("\n\t- removal: ").append(getSeverityString(UsingTerminallyDeprecatedAPI)); //$NON-NLS-1$
 		buf.append("\n\t- masked catch block: ").append(getSeverityString(MaskedCatchBlock)); //$NON-NLS-1$
 		buf.append("\n\t- unused local variable: ").append(getSeverityString(UnusedLocalVariable)); //$NON-NLS-1$
+		buf.append("\n\t- unused lambda parameter: ").append(getSeverityString(UnusedLambdaParameter)); //$NON-NLS-1$
 		buf.append("\n\t- unused parameter: ").append(getSeverityString(UnusedArgument)); //$NON-NLS-1$
 		buf.append("\n\t- unused exception parameter: ").append(getSeverityString(UnusedExceptionParameter)); //$NON-NLS-1$
 		buf.append("\n\t- unused import: ").append(getSeverityString(UnusedImport)); //$NON-NLS-1$
@@ -2227,6 +2331,7 @@ public class CompilerOptions {
 		buf.append("\n\t- JDK compliance level: "+ versionFromJdkLevel(this.complianceLevel)); //$NON-NLS-1$
 		buf.append("\n\t- JDK source level: "+ versionFromJdkLevel(this.sourceLevel)); //$NON-NLS-1$
 		buf.append("\n\t- JDK target level: "+ versionFromJdkLevel(this.targetJDK)); //$NON-NLS-1$
+		buf.append("\n\t- Preview Features: ").append(this.enablePreviewFeatures ? ENABLED : DISABLED); //$NON-NLS-1$
 		buf.append("\n\t- verbose : ").append(this.verbose ? "ON" : "OFF"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		buf.append("\n\t- produce reference info : ").append(this.produceReferenceInfo ? "ON" : "OFF"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 		buf.append("\n\t- parse literal expressions as constants : ").append(this.parseLiteralExpressionsAsConstants ? "ON" : "OFF"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -2239,8 +2344,6 @@ public class CompilerOptions {
 		buf.append("\n\t- report unused parameter when overriding concrete method : ").append(this.reportUnusedParameterWhenOverridingConcrete ? ENABLED : DISABLED); //$NON-NLS-1$
 		buf.append("\n\t- report unused parameter include doc comment reference : ").append(this.reportUnusedParameterIncludeDocCommentReference ? ENABLED : DISABLED); //$NON-NLS-1$
 		buf.append("\n\t- report constructor/setter parameter hiding existing field : ").append(this.reportSpecialParameterHidingField ? ENABLED : DISABLED); //$NON-NLS-1$
-		buf.append("\n\t- inline JSR bytecode : ").append(this.inlineJsrBytecode ? ENABLED : DISABLED); //$NON-NLS-1$
-		buf.append("\n\t- share common finally blocks : ").append(this.shareCommonFinallyBlocks ? ENABLED : DISABLED); //$NON-NLS-1$
 		buf.append("\n\t- report unavoidable generic type problems : ").append(this.reportUnavoidableGenericTypeProblems ? ENABLED : DISABLED); //$NON-NLS-1$
 		buf.append("\n\t- unsafe type operation: ").append(getSeverityString(UncheckedTypeOperation)); //$NON-NLS-1$
 		buf.append("\n\t- unsafe raw type: ").append(getSeverityString(RawTypeReference)); //$NON-NLS-1$
@@ -2280,9 +2383,12 @@ public class CompilerOptions {
 		buf.append("\n\t- method can be static: ").append(getSeverityString(MethodCanBeStatic)); //$NON-NLS-1$
 		buf.append("\n\t- method can be potentially static: ").append(getSeverityString(MethodCanBePotentiallyStatic)); //$NON-NLS-1$
 		buf.append("\n\t- redundant specification of type arguments: ").append(getSeverityString(RedundantSpecificationOfTypeArguments)); //$NON-NLS-1$
+		// resource leak analysis:
 		buf.append("\n\t- resource is not closed: ").append(getSeverityString(UnclosedCloseable)); //$NON-NLS-1$
 		buf.append("\n\t- resource may not be closed: ").append(getSeverityString(PotentiallyUnclosedCloseable)); //$NON-NLS-1$
 		buf.append("\n\t- resource should be handled by try-with-resources: ").append(getSeverityString(ExplicitlyClosedAutoCloseable)); //$NON-NLS-1$
+		buf.append("\n\t- resource should be managed explicitly: ").append(getSeverityString(InsufficientResourceManagement)); //$NON-NLS-1$
+
 		buf.append("\n\t- Unused Type Parameter: ").append(getSeverityString(UnusedTypeParameter)); //$NON-NLS-1$
 		buf.append("\n\t- pessimistic null analysis for free type variables: ").append(getSeverityString(PessimisticNullAnalysisForFreeTypeVariables)); //$NON-NLS-1$
 		buf.append("\n\t- report unsafe nonnull return from legacy method: ").append(getSeverityString(NonNullTypeVariableFromLegacyInvocation)); //$NON-NLS-1$
@@ -2294,6 +2400,7 @@ public class CompilerOptions {
 		buf.append("\n\t- SuppressWarnings not fully analysed: ").append(getSeverityString(SuppressWarningsNotAnalysed)); //$NON-NLS-1$
 		buf.append("\n\t- ignore package from unnamed module: ").append(this.ignoreUnnamedModuleForSplitPackage ? ENABLED : DISABLED); //$NON-NLS-1$
 		buf.append("\n\t- use StringConcatFactory for String concatenation expressions: ").append(this.useStringConcatFactory ? ENABLED : DISABLED); //$NON-NLS-1$
+		buf.append("\n\t- validate virtual machine's operand stack during code generation: ").append(this.validateOperandStack ? ENABLED : DISABLED); //$NON-NLS-1$
 		return buf.toString();
 	}
 

@@ -26,9 +26,13 @@ package org.eclipse.jdt.internal.codeassist.complete;
  * The source range of the completion node denotes the source range
  * which should be replaced by the completion.
  */
-
-import org.eclipse.jdt.internal.compiler.ast.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.ast.Annotation;
+import org.eclipse.jdt.internal.compiler.ast.QualifiedTypeReference;
+import org.eclipse.jdt.internal.compiler.ast.TypeReference;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemReasons;
+import org.eclipse.jdt.internal.compiler.lookup.Scope;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 public class CompletionOnQualifiedTypeReference extends QualifiedTypeReference implements CompletionNode {
 	public static final int K_TYPE = 0;
@@ -95,7 +99,7 @@ public void setKind(int kind) {
 	this.kind = kind;
 }
 @Override
-public StringBuffer printExpression(int indent, StringBuffer output) {
+public StringBuilder printExpression(int indent, StringBuilder output) {
 	switch (this.kind) {
 		case K_CLASS :
 			output.append("<CompleteOnClass:");//$NON-NLS-1$
@@ -110,8 +114,8 @@ public StringBuffer printExpression(int indent, StringBuffer output) {
 			output.append("<CompleteOnType:");//$NON-NLS-1$
 			break;
 	}
-	for (int i = 0; i < this.tokens.length; i++) {
-		output.append(this.tokens[i]);
+	for (char[] token : this.tokens) {
+		output.append(token);
 		output.append('.');
 	}
 	output.append(this.completionIdentifier).append('>');

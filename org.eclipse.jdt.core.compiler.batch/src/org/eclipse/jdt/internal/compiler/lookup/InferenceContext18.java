@@ -14,29 +14,9 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.lookup;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import java.util.*;
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.internal.compiler.ast.AllocationExpression;
-import org.eclipse.jdt.internal.compiler.ast.ConditionalExpression;
-import org.eclipse.jdt.internal.compiler.ast.Expression;
-import org.eclipse.jdt.internal.compiler.ast.FunctionalExpression;
-import org.eclipse.jdt.internal.compiler.ast.Invocation;
-import org.eclipse.jdt.internal.compiler.ast.LambdaExpression;
-import org.eclipse.jdt.internal.compiler.ast.RecordPattern;
-import org.eclipse.jdt.internal.compiler.ast.ReferenceExpression;
-import org.eclipse.jdt.internal.compiler.ast.SwitchExpression;
-import org.eclipse.jdt.internal.compiler.ast.Wildcard;
+import org.eclipse.jdt.internal.compiler.ast.*;
 import org.eclipse.jdt.internal.compiler.lookup.TypeConstants.BoundCheckStatus;
 import org.eclipse.jdt.internal.compiler.util.Sorting;
 
@@ -75,7 +55,7 @@ import org.eclipse.jdt.internal.compiler.util.Sorting;
  *  <li>18.2.2 Type Compatibility Constraints ff. {@link ConstraintTypeFormula#reduce(InferenceContext18)}.</li>
  *  </ul></li>
  * <li>18.3 <b>Incorporation</b>: {@link BoundSet#incorporate(InferenceContext18)}; during inference new constraints
- * 	are accepted via {@link BoundSet#reduceOneConstraint(InferenceContext18, ConstraintFormula)} (combining 18.2 & 18.3)</li>
+ * 	are accepted via {@link BoundSet#reduceOneConstraint(InferenceContext18, ConstraintFormula)} (combining 18.2 and 18.3)</li>
  * <li>18.4 <b>Resolution</b>: {@link #resolve(InferenceVariable[])}.
  * </ul>
  * Some of the above operations accumulate their results into {@link #currentBounds}, whereas
@@ -92,7 +72,7 @@ import org.eclipse.jdt.internal.compiler.util.Sorting;
  * <dt>18.5.2 Invocation Type Inference</dt>
  * <dd>{@link InferenceContext18#inferInvocationType(TypeBinding, InvocationSite, MethodBinding)}. After a
  * 	most specific method has been picked, and given a target type determine the final generic instantiation.
- *  As long as a target type is still unavailable this phase keeps getting deferred.</br>
+ *  As long as a target type is still unavailable this phase keeps getting deferred.<br>
  *  Different wrappers exist for the convenience of different callers.</dd>
  * <dt>18.5.3 Functional Interface Parameterization Inference</dt>
  * <dd>Controlled from {@link LambdaExpression#resolveType(BlockScope)}.</dd>
@@ -102,7 +82,7 @@ import org.eclipse.jdt.internal.compiler.util.Sorting;
  * For 18.5.1 and 18.5.2 high-level control is implemented in
  *  {@link ParameterizedGenericMethodBinding#computeCompatibleMethod(MethodBinding, TypeBinding[], Scope, InvocationSite)}.
  * <h2>Inference Lifecycle</h2>
- * <li>Decision whether or not an invocation is a <b>variable-arity</b> invocation is made by first attempting
+ * <ul><li>Decision whether or not an invocation is a <b>variable-arity</b> invocation is made by first attempting
  * 		to solve 18.5.1 in mode {@link #CHECK_LOOSE}. Only if that fails, another attempt is made in mode {@link #CHECK_VARARG}.
  * 		Which of these two attempts was successful is stored in {@link #inferenceKind}.
  * 		This field must be consulted whenever arguments of an invocation should be further processed.
@@ -112,6 +92,7 @@ import org.eclipse.jdt.internal.compiler.util.Sorting;
 public class InferenceContext18 {
 
 	public final static boolean DEBUG = false;
+	public final static boolean DEBUG_FINE = false;
 
 	/** to conform with javac regarding https://bugs.openjdk.java.net/browse/JDK-8026527 */
 	static final boolean SIMULATE_BUG_JDK_8026527 = true;
@@ -179,6 +160,8 @@ public class InferenceContext18 {
 	// the following two flags control to what degree we continue with incomplete information:
 	private boolean isInexactVarargsInference = false;
 	boolean prematureOverloadResolution = false;
+	// during reduction we ignore missing types but record that fact here:
+	boolean hasIgnoredMissingType;
 
 	public static boolean isSameSite(InvocationSite site1, InvocationSite site2) {
 		if (site1 == site2)
@@ -372,8 +355,8 @@ public class InferenceContext18 {
 	public void addThrowsContraints(TypeBinding[] parameters, InferenceVariable[] variables, ReferenceBinding[] thrownExceptions) {
 		for (int i = 0; i < parameters.length; i++) {
 			TypeBinding parameter = parameters[i];
-			for (int j = 0; j < thrownExceptions.length; j++) {
-				if (TypeBinding.equalsEquals(parameter, thrownExceptions[j])) {
+			for (ReferenceBinding thrownException : thrownExceptions) {
+				if (TypeBinding.equalsEquals(parameter, thrownException)) {
 					this.currentBounds.inThrows.add(variables[i].prototype());
 					break;
 				}
@@ -439,7 +422,7 @@ public class InferenceContext18 {
 			this.directlyAcceptingInnerBounds = true;
 
 			// 4. bullet: assemble C:
-			Set<ConstraintFormula> c = new LinkedHashSet<ConstraintFormula>();
+			Set<ConstraintFormula> c = new LinkedHashSet<>();
 			if (!addConstraintsToC(this.invocationArguments, c, method, this.inferenceKind, invocationSite))
 				return null;
 			// 5. bullet: determine B4 from C
@@ -453,7 +436,7 @@ public class InferenceContext18 {
 				// *
 				c.removeAll(bottomSet);
 				// * The union of the input variables of all the selected constraints, α1, ..., αm, ...
-				Set<InferenceVariable> allInputs = new LinkedHashSet<InferenceVariable>();
+				Set<InferenceVariable> allInputs = new LinkedHashSet<>();
 				Iterator<ConstraintFormula> bottomIt = bottomSet.iterator();
 				while (bottomIt.hasNext()) {
 					allInputs.addAll(bottomIt.next().inputVariables(this));
@@ -593,10 +576,9 @@ public class InferenceContext18 {
 			if (addJDK_8153748ConstraintsFromExpression(ce.valueIfTrue, parameter, method, substitution) == ReductionResult.FALSE)
 				return ReductionResult.FALSE;
 			return addJDK_8153748ConstraintsFromExpression(ce.valueIfFalse, parameter, method, substitution);
-		} else if (argument instanceof SwitchExpression) {
-			SwitchExpression se = (SwitchExpression) argument;
+		} else if (argument instanceof SwitchExpression se) {
 			ReductionResult result = ReductionResult.FALSE;
-			for (Expression re : se.resultExpressions) {
+			for (Expression re : se.resultExpressions()) {
 				result = addJDK_8153748ConstraintsFromExpression(re, parameter, method, substitution);
 				if (result == ReductionResult.FALSE)
 					break;
@@ -738,9 +720,8 @@ public class InferenceContext18 {
 			ConditionalExpression ce = (ConditionalExpression) expri;
 			return addConstraintsToC_OneExpr(ce.valueIfTrue, c, fsi, substF, method)
 					&& addConstraintsToC_OneExpr(ce.valueIfFalse, c, fsi, substF, method);
-		} else if (expri instanceof SwitchExpression) {
-			SwitchExpression se = (SwitchExpression) expri;
-			for (Expression re : se.resultExpressions) {
+		} else if (expri instanceof SwitchExpression se) {
+			for (Expression re : se.resultExpressions()) {
 				if (!addConstraintsToC_OneExpr(re, c, fsi, substF, method))
 					return false;
 			}
@@ -753,6 +734,7 @@ public class InferenceContext18 {
 	protected int getInferenceKind(MethodBinding nonGenericMethod, TypeBinding[] argumentTypes) {
 		switch (this.scope.parameterCompatibilityLevel(nonGenericMethod, argumentTypes)) {
 			case Scope.AUTOBOX_COMPATIBLE:
+			case Scope.COMPATIBLE_IGNORING_MISSING_TYPE: // if in doubt the method with missing types should be accepted to signal its relevance for resolution
 				return CHECK_LOOSE;
 			case Scope.VARARGS_COMPATIBLE:
 				return CHECK_VARARG;
@@ -909,8 +891,8 @@ public class InferenceContext18 {
 					return null;							// bullet 4
 					// each element of the intersection is a superinterface of I, or a parameterization of a superinterface of I.
 				}
-				for (int i = 0; i < elements.length; i++)
-					if (siSubI(elements[i], funcI))
+				for (TypeBinding binding : elements)
+					if (siSubI(binding, funcI))
 						return null;						// bullet 5
 						// some element of the intersection is a subinterface of I, or a parameterization of a subinterface of I.
 			}
@@ -943,8 +925,8 @@ public class InferenceContext18 {
 						&& !(r1.isCompatibleWith(r2) || r2.isCompatibleWith(r1))) {
 					// "these rules are applied recursively to R1 and R2, for each result expression in expi."
 					// (what does "applied .. to R1 and R2" mean? Why mention R1/R2 and not U/V?)
-					for (int i = 0; i < results.length; i++) {
-						if (!checkExpression(results[i], u, r1, v, r2))
+					for (Expression result : results) {
+						if (!checkExpression(result, u, r1, v, r2))
 							return false;
 					}
 					return true;
@@ -987,9 +969,8 @@ public class InferenceContext18 {
 		} else if (expri instanceof ConditionalExpression) {
 			ConditionalExpression cond = (ConditionalExpression) expri;
 			return  checkExpression(cond.valueIfTrue, u, r1, v, r2) && checkExpression(cond.valueIfFalse, u, r1, v, r2);
-		} else if (expri instanceof SwitchExpression) {
-			SwitchExpression se = (SwitchExpression) expri;
-			for (Expression re : se.resultExpressions) {
+		} else if (expri instanceof SwitchExpression se) {
+			for (Expression re : se.resultExpressions()) {
 				if (!checkExpression(re, u, r1, v, r2))
 					return false;
 			}
@@ -1004,8 +985,8 @@ public class InferenceContext18 {
 			return true;
 		TypeBinding[] superIfcs = funcI.superInterfaces();
 		if (superIfcs == null) return false;
-		for (int i = 0; i < superIfcs.length; i++) {
-			if (siSuperI(si, superIfcs[i].original()))
+		for (TypeBinding superIfc : superIfcs) {
+			if (siSuperI(si, superIfc.original()))
 				return true;
 		}
 		return false;
@@ -1016,8 +997,8 @@ public class InferenceContext18 {
 			return true;
 		TypeBinding[] superIfcs = si.superInterfaces();
 		if (superIfcs == null) return false;
-		for (int i = 0; i < superIfcs.length; i++) {
-			if (siSubI(superIfcs[i], funcI))
+		for (TypeBinding superIfc : superIfcs) {
+			if (siSubI(superIfc, funcI))
 				return true;
 		}
 		return false;
@@ -1094,7 +1075,7 @@ public class InferenceContext18 {
 		}
 		this.initialConstraints = null;
 		if (DEBUG) {
-			System.out.println("reduced to\n"+this); //$NON-NLS-1$
+			System.out.println("Reduced all to:\n"+this); //$NON-NLS-1$
 		}
 		return true;
 	}
@@ -1104,8 +1085,8 @@ public class InferenceContext18 {
 	 */
 	public boolean isResolved(BoundSet boundSet) {
 		if (this.inferenceVariables != null) {
-			for (int i = 0; i < this.inferenceVariables.length; i++) {
-				if (!boundSet.isInstantiated(this.inferenceVariables[i]))
+			for (InferenceVariable inferenceVariable : this.inferenceVariables) {
+				if (!boundSet.isInstantiated(inferenceVariable))
 					return false;
 			}
 		}
@@ -1124,8 +1105,7 @@ public class InferenceContext18 {
 		if (this.outerContext != null && this.outerContext.stepCompleted < TYPE_INFERRED)
 			outerVariables = this.outerContext.inferenceVariables;
 		for (int i = 0; i < typeParameters.length; i++) {
-			for (int j = 0; j < this.inferenceVariables.length; j++) {
-				InferenceVariable variable = this.inferenceVariables[j];
+			for (InferenceVariable variable : this.inferenceVariables) {
 				if (isSameSite(variable.site, site) && TypeBinding.equalsEquals(variable.typeParameter, typeParameters[i])) {
 					TypeBinding outerVar = null;
 					if (outerVariables != null && (outerVar = boundSet.getEquivalentOuterVariable(variable, outerVariables)) != null)
@@ -1271,7 +1251,7 @@ public class InferenceContext18 {
 						if (tmpBoundSet == this.currentBounds)
 							tmpBoundSet = tmpBoundSet.copy();
 						Iterator<ParameterizedTypeBinding> captureKeys = tmpBoundSet.captures.keySet().iterator();
-						Set<ParameterizedTypeBinding> toRemove = new LinkedHashSet<ParameterizedTypeBinding>();
+						Set<ParameterizedTypeBinding> toRemove = new LinkedHashSet<>();
 						while (captureKeys.hasNext()) {
 							ParameterizedTypeBinding key = captureKeys.next();
 							int len = key.arguments.length;
@@ -1343,8 +1323,8 @@ public class InferenceContext18 {
 			if (glbs == null)
 				return false;
 			if (typeVariable.lowerBound != null) {
-				for (int i = 0; i < glbs.length; i++) {
-					if (!typeVariable.lowerBound.isCompatibleWith(glbs[i]))
+				for (TypeBinding glb : glbs) {
+					if (!typeVariable.lowerBound.isCompatibleWith(glb))
 						return false; // not well-formed
 				}
 			}
@@ -1373,7 +1353,7 @@ public class InferenceContext18 {
 	private Set<InferenceVariable> getSmallestVariableSet(BoundSet bounds, InferenceVariable[] subSet) {
 		// "Given a set of inference variables to resolve, let V be the union of this set and
 		//  all variables upon which the resolution of at least one variable in this set depends."
-		Set<InferenceVariable> v = new LinkedHashSet<InferenceVariable>();
+		Set<InferenceVariable> v = new LinkedHashSet<>();
 		Map<InferenceVariable,Set<InferenceVariable>> dependencies = new HashMap<>(); // compute only once, store for the final loop over 'v'.
 		for (InferenceVariable iv : subSet) {
 			Set<InferenceVariable> tmp = new LinkedHashSet<>();
@@ -1409,8 +1389,7 @@ public class InferenceContext18 {
 	private void addDependencies(BoundSet boundSet, Set<InferenceVariable> variableSet, InferenceVariable currentVariable) {
 		if (boundSet.isInstantiated(currentVariable)) return; // not added
 		if (!variableSet.add(currentVariable)) return; // already present
-		for (int j = 0; j < this.inferenceVariables.length; j++) {
-			InferenceVariable nextVariable = this.inferenceVariables[j];
+		for (InferenceVariable nextVariable : this.inferenceVariables) {
 			if (TypeBinding.equalsEquals(nextVariable, currentVariable)) continue;
 			if (boundSet.dependsOnResolutionOf(currentVariable, nextVariable))
 				addDependencies(boundSet, variableSet, nextVariable);
@@ -1433,8 +1412,8 @@ public class InferenceContext18 {
 		// that "best matches" the given conditions.
 
 		// collect all constraints participating in a cycle
-		HashMap<ConstraintFormula,Set<ConstraintFormula>> dependencies = new HashMap<ConstraintFormula, Set<ConstraintFormula>>();
-		Set<ConstraintFormula> cycles = new LinkedHashSet<ConstraintFormula>();
+		HashMap<ConstraintFormula,Set<ConstraintFormula>> dependencies = new HashMap<>();
+		Set<ConstraintFormula> cycles = new LinkedHashSet<>();
 		for (ConstraintFormula constraint : c) {
 			Collection<InferenceVariable> infVars = constraint.inputVariables(this);
 			for (ConstraintFormula other : c) {
@@ -1443,21 +1422,21 @@ public class InferenceContext18 {
 					// found a dependency, record it:
 					Set<ConstraintFormula> targetSet = dependencies.get(constraint);
 					if (targetSet == null)
-						dependencies.put(constraint, targetSet = new LinkedHashSet<ConstraintFormula>());
+						dependencies.put(constraint, targetSet = new LinkedHashSet<>());
 					targetSet.add(other);
 					// look for a cycle:
-					Set<ConstraintFormula> nodesInCycle = new LinkedHashSet<ConstraintFormula>();
-					if (isReachable(dependencies, other, constraint, new LinkedHashSet<ConstraintFormula>(), nodesInCycle)) {
+					Set<ConstraintFormula> nodesInCycle = new LinkedHashSet<>();
+					if (isReachable(dependencies, other, constraint, new LinkedHashSet<>(), nodesInCycle)) {
 						// found a cycle, record the involved nodes:
 						cycles.addAll(nodesInCycle);
 					}
 				}
 			}
 		}
-		Set<ConstraintFormula> outside = new LinkedHashSet<ConstraintFormula>(c);
+		Set<ConstraintFormula> outside = new LinkedHashSet<>(c);
 		outside.removeAll(cycles);
 
-		Set<ConstraintFormula> candidatesII = new LinkedHashSet<ConstraintFormula>();
+		Set<ConstraintFormula> candidatesII = new LinkedHashSet<>();
 		// (i): participates in a cycle:
 		candidates: for (ConstraintFormula candidate : cycles) {
 			Collection<InferenceVariable> infVars = candidate.inputVariables(this);
@@ -1472,7 +1451,7 @@ public class InferenceContext18 {
 			candidatesII = c; // not spec'ed but needed to avoid returning null below, witness: java.util.stream.Collectors
 
 		// tentatively: (iii)  has the form ⟨Expression → T⟩
-		Set<ConstraintFormula> candidatesIII = new LinkedHashSet<ConstraintFormula>();
+		Set<ConstraintFormula> candidatesIII = new LinkedHashSet<>();
 		for (ConstraintFormula candidate : candidatesII) {
 			if (candidate instanceof ConstraintExpressionFormula)
 				candidatesIII.add(candidate);
@@ -1485,7 +1464,7 @@ public class InferenceContext18 {
 
 			// collect containment info regarding all expressions in candidate constraints:
 			// (a) find minimal enclosing expressions:
-			Map<ConstraintExpressionFormula,ConstraintExpressionFormula> expressionContainedBy = new LinkedHashMap<ConstraintExpressionFormula, ConstraintExpressionFormula>();
+			Map<ConstraintExpressionFormula,ConstraintExpressionFormula> expressionContainedBy = new LinkedHashMap<>();
 			for (ConstraintFormula one : candidatesIII) {
 				ConstraintExpressionFormula oneCEF = (ConstraintExpressionFormula) one;
 				Expression exprOne = oneCEF.left;
@@ -1501,12 +1480,12 @@ public class InferenceContext18 {
 				}
 			}
 			// (b) build the tree from the above
-			Map<ConstraintExpressionFormula,Set<ConstraintExpressionFormula>> containmentForest = new LinkedHashMap<ConstraintExpressionFormula, Set<ConstraintExpressionFormula>>();
+			Map<ConstraintExpressionFormula,Set<ConstraintExpressionFormula>> containmentForest = new LinkedHashMap<>();
 			for (Map.Entry<ConstraintExpressionFormula, ConstraintExpressionFormula> parentRelation : expressionContainedBy.entrySet()) {
 				ConstraintExpressionFormula parent = parentRelation.getValue();
 				Set<ConstraintExpressionFormula> children = containmentForest.get(parent);
 				if (children == null)
-					containmentForest.put(parent, children = new LinkedHashSet<ConstraintExpressionFormula>());
+					containmentForest.put(parent, children = new LinkedHashSet<>());
 				children.add(parentRelation.getKey());
 			}
 
@@ -1601,7 +1580,7 @@ public class InferenceContext18 {
 		//  for each constraint, no input variable can influence an output variable of another constraint in C. ...
 		//  An inference variable α can influence an inference variable β if α depends on the resolution of β (§18.4), or vice versa;
 		//  or if there exists a third inference variable γ such that α can influence γ and γ can influence β.  ...
-		Set<ConstraintFormula> result = new LinkedHashSet<ConstraintFormula>();
+		Set<ConstraintFormula> result = new LinkedHashSet<>();
 	  constraintLoop:
 		for (ConstraintFormula constraint : constraints) {
 			for (InferenceVariable in : constraint.inputVariables(this)) {
@@ -1627,10 +1606,9 @@ public class InferenceContext18 {
 	}
 
 	Set<InferenceVariable> allOutputVariables(Set<ConstraintFormula> constraints) {
-		Set<InferenceVariable> result = new LinkedHashSet<InferenceVariable>();
-		Iterator<ConstraintFormula> it = constraints.iterator();
-		while (it.hasNext()) {
-			result.addAll(it.next().outputVariables(this));
+		Set<InferenceVariable> result = new LinkedHashSet<>();
+		for (ConstraintFormula constraint : constraints) {
+			result.addAll(constraint.outputVariables(this));
 		}
 		return result;
 	}
@@ -1790,10 +1768,10 @@ public class InferenceContext18 {
 		buf.append('\n');
 		if (this.inferenceVariables != null) {
 			buf.append("Inference Variables:\n"); //$NON-NLS-1$
-			for (int i = 0; i < this.inferenceVariables.length; i++) {
-				buf.append('\t').append(this.inferenceVariables[i].sourceName).append("\t:\t"); //$NON-NLS-1$
-				if (this.currentBounds != null && this.currentBounds.isInstantiated(this.inferenceVariables[i]))
-					buf.append(this.currentBounds.getInstantiation(this.inferenceVariables[i], this.environment).readableName());
+			for (InferenceVariable inferenceVariable : this.inferenceVariables) {
+				buf.append('\t').append(inferenceVariable.sourceName).append("\t:\t"); //$NON-NLS-1$
+				if (this.currentBounds != null && this.currentBounds.isInstantiated(inferenceVariable))
+					buf.append(this.currentBounds.getInstantiation(inferenceVariable, this.environment).readableName());
 				else
 					buf.append("NOT INSTANTIATED"); //$NON-NLS-1$
 				buf.append('\n');
@@ -1801,9 +1779,9 @@ public class InferenceContext18 {
 		}
 		if (this.initialConstraints != null) {
 			buf.append("Initial Constraints:\n"); //$NON-NLS-1$
-			for (int i = 0; i < this.initialConstraints.length; i++)
-				if (this.initialConstraints[i] != null)
-					buf.append('\t').append(this.initialConstraints[i].toString()).append('\n');
+			for (ConstraintFormula initialConstraint : this.initialConstraints)
+				if (initialConstraint != null)
+					buf.append('\t').append(initialConstraint.toString()).append('\n');
 		}
 		if (this.currentBounds != null)
 			buf.append(this.currentBounds.toString());
@@ -1820,8 +1798,8 @@ public class InferenceContext18 {
 		ParameterizedTypeBinding parameterizedType = (ParameterizedTypeBinding) type;
 		TypeBinding[] arguments = parameterizedType.arguments;
 		if (arguments != null) {
-			for (int i = 0; i < arguments.length; i++)
-				if (arguments[i].isWildcard())
+			for (TypeBinding argument : arguments)
+				if (argument.isWildcard())
 					return parameterizedType;
 		}
 		return null;
@@ -1851,7 +1829,7 @@ public class InferenceContext18 {
 	/** Record the fact that the given constraint requires unchecked conversion. */
 	public void recordUncheckedConversion(ConstraintTypeFormula constraint) {
 		if (this.constraintsWithUncheckedConversion == null)
-			this.constraintsWithUncheckedConversion = new ArrayList<ConstraintFormula>();
+			this.constraintsWithUncheckedConversion = new ArrayList<>();
 		this.constraintsWithUncheckedConversion.add(constraint);
 		this.usesUncheckedConversion = true;
 	}
@@ -1897,8 +1875,7 @@ public class InferenceContext18 {
 		updateInnerDiamonds(pmb, arguments);
 		for (int i = 0, length = arguments == null ? 0 : arguments.length; i < length; i++) {
 			Expression [] expressions = arguments[i].getPolyExpressions();
-			for (int j = 0, jLength = expressions.length; j < jLength; j++) {
-				Expression expression = expressions[j];
+			for (Expression expression : expressions) {
 				if (!(expression instanceof Invocation))
 					continue;
 				Invocation polyInvocation = (Invocation) expression;
@@ -1972,7 +1949,7 @@ public class InferenceContext18 {
 			return null; // should not happen.
 		// 1.If T is not downcast convertible (5.5) to the raw type R, inference fails.
 		Expression synthExpr = new Expression() {
-			@Override public StringBuffer printExpression(int indent, StringBuffer output) {
+			@Override public StringBuilder printExpression(int indent, StringBuilder output) {
 				return output;
 			}
 		};
@@ -2067,27 +2044,17 @@ public class InferenceContext18 {
 			return false;
 		ReferenceBinding rAlpha = this.environment.createParameterizedType(
 				(ReferenceBinding) typeBinding.original(), alphas, typeBinding.enclosingType(), typeBinding.getTypeAnnotations());
-		TypeBinding[] rPrimes = this.currentBounds.condition18_5_5_item_4(rAlpha, alphas, tPrime, this);
-		if (rPrimes != null) {
-			// TODO:
+		TypeBinding rPrime = this.currentBounds.condition18_5_5_item_4(rAlpha, alphas, tPrime, this);
+		if (rPrime != null) {
 			/* The constraint formula ‹T' = R'› is reduced (18.2) and the resulting bounds are
-			 * incorporated into B1 to produce a new bound set, B2.
-			 * TODO: refactor the method below into two? - instead of creating array - here reusing. */
-			for (TypeBinding rPrime : rPrimes) {
-				if (!rPrime.isParameterizedType()) continue;
-				try {
-					if (!reduceAndIncorporate(ConstraintTypeFormula.create(tPrime, rPrime, ReductionResult.SAME))) {
-						 /* If B2 contains the bound false, inference fails. */
-						return false;
-					}
-				} catch (InferenceFailureException e) {
+			 * incorporated into B1 to produce a new bound set, B2. */
+			try {
+				if (!reduceAndIncorporate(ConstraintTypeFormula.create(tPrime, rPrime, ReductionResult.SAME))) {
+					 /* If B2 contains the bound false, inference fails. */
 					return false;
 				}
-//				if (rPrime.typeArguments().length == 0) continue; // TODO: should we?
-//				if (!reduceWithEqualityConstraints(new TypeBinding[] {tPrime}, new TypeBinding[] {rPrime})) {
-//					 /* If B2 contains the bound false, inference fails. */
-//					return false;
-//				}
+			} catch (InferenceFailureException e) {
+				return false;
 			}
 		} /* else part: Otherwise, B2 is the same as B1.*/
 		return true;

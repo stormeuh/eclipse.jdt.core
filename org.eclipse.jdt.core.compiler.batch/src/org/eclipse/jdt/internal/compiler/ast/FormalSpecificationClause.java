@@ -36,7 +36,7 @@ public class FormalSpecificationClause extends Expression {
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 		output.append("/**@"); //$NON-NLS-1$
 		output.append(this.tag.toString().toLowerCase(Locale.ROOT));
 		output.append(' ');

@@ -94,8 +94,8 @@ public abstract class VariableBinding extends Binding {
 	}
 	@Override
 	public String toString() {
-		StringBuffer output = new StringBuffer(10);
-		ASTNode.printModifiers(this.modifiers, output);
+		StringBuilder output = new StringBuilder(10);
+		ASTNode.printModifiers(this.modifiers & ~ExtraCompilerModifiers.AccOutOfFlowScope, output); // so pattern bindings don't show up as sealed (!)
 		if ((this.modifiers & ExtraCompilerModifiers.AccUnresolved) != 0) {
 			output.append("[unresolved] "); //$NON-NLS-1$
 		}

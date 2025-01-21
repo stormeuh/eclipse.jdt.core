@@ -29,6 +29,11 @@ public class ResolvedSourceMethod extends SourceMethod {
 		this.uniqueKey = uniqueKey;
 	}
 
+	public ResolvedSourceMethod(JavaElement parent, String name, String[] parameterTypes, String uniqueKey, int occurrenceCount) {
+		super(parent, name, parameterTypes, occurrenceCount);
+		this.uniqueKey = uniqueKey;
+	}
+
 	@Override
 	public String getKey() {
 		return this.uniqueKey;
@@ -40,10 +45,10 @@ public class ResolvedSourceMethod extends SourceMethod {
 	}
 
 	/**
-	 * @private Debugging purposes
+	 * for debugging only
 	 */
 	@Override
-	protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+	protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 		super.toStringInfo(tab, buffer, info, showResolvedInfo);
 		if (showResolvedInfo) {
 			buffer.append(" {key="); //$NON-NLS-1$
@@ -53,9 +58,7 @@ public class ResolvedSourceMethod extends SourceMethod {
 	}
 
 	@Override
-	public JavaElement unresolved() {
-		SourceRefElement handle = new SourceMethod(this.getParent(), this.name, this.parameterTypes);
-		handle.occurrenceCount = this.occurrenceCount;
-		return handle;
+	public SourceMethod unresolved() {
+		return new SourceMethod(this.getParent(), this.name, this.parameterTypes, this.getOccurrenceCount());
 	}
 }

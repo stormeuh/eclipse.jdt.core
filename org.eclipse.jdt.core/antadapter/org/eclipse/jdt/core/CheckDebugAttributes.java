@@ -18,7 +18,6 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
-
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Task;
 import org.eclipse.jdt.core.util.IClassFileReader;
@@ -40,7 +39,6 @@ import org.eclipse.jdt.internal.antadapter.AntAdapterMessages;
  * This is not intended to be subclassed by users.
  * @since 2.0
  */
-@SuppressWarnings("rawtypes")
 public final class CheckDebugAttributes extends Task {
 
 	private String file;
@@ -60,22 +58,16 @@ public final class CheckDebugAttributes extends Task {
 				IClassFileReader classFileReader = ToolFactory.createDefaultClassFileReader(this.file, IClassFileReader.ALL);
 				hasDebugAttributes = checkClassFile(classFileReader);
 			} else {
-				ZipFile jarFile = null;
-				try {
-					jarFile = new ZipFile(this.file);
+				try (ZipFile jarFile = new ZipFile(this.file)) {
+					for (Enumeration<? extends ZipEntry> entries = jarFile.entries(); !hasDebugAttributes && entries.hasMoreElements(); ) {
+						ZipEntry entry = entries.nextElement();
+						if (org.eclipse.jdt.internal.compiler.util.Util.isClassFileName(entry.getName())) {
+							IClassFileReader classFileReader = ToolFactory.createDefaultClassFileReader(this.file, entry.getName(), IClassFileReader.ALL);
+							hasDebugAttributes = checkClassFile(classFileReader);
+						}
+					}
 				} catch (ZipException e) {
 					throw new BuildException(AntAdapterMessages.getString("checkDebugAttributes.file.argument.must.be.a.classfile.or.a.jarfile"), e); //$NON-NLS-1$
-				} finally {
-					if (jarFile != null) {
-						jarFile.close();
-					}
-				}
-				for (Enumeration entries = jarFile.entries(); !hasDebugAttributes && entries.hasMoreElements(); ) {
-					ZipEntry entry = (ZipEntry) entries.nextElement();
-					if (org.eclipse.jdt.internal.compiler.util.Util.isClassFileName(entry.getName())) {
-						IClassFileReader classFileReader = ToolFactory.createDefaultClassFileReader(this.file, entry.getName(), IClassFileReader.ALL);
-						hasDebugAttributes = checkClassFile(classFileReader);
-					}
 				}
 			}
 			if (hasDebugAttributes) {
@@ -88,8 +80,8 @@ public final class CheckDebugAttributes extends Task {
 
 	private boolean checkClassFile(IClassFileReader classFileReader) {
 		IMethodInfo[] methodInfos = classFileReader.getMethodInfos();
-		for (int i = 0, max = methodInfos.length; i < max; i++) {
-			ICodeAttribute codeAttribute = methodInfos[i].getCodeAttribute();
+		for (IMethodInfo methodInfo : methodInfos) {
+			ICodeAttribute codeAttribute = methodInfo.getCodeAttribute();
 			if (codeAttribute != null && codeAttribute.getLineNumberAttribute() != null) {
 				return true;
 			}

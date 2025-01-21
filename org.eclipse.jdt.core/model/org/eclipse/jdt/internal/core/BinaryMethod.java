@@ -14,17 +14,9 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core;
 
+import java.util.Arrays;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.Flags;
-import org.eclipse.jdt.core.IAnnotation;
-import org.eclipse.jdt.core.ILocalVariable;
-import org.eclipse.jdt.core.IMemberValuePair;
-import org.eclipse.jdt.core.IMethod;
-import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.ITypeParameter;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.env.IBinaryAnnotation;
@@ -34,6 +26,7 @@ import org.eclipse.jdt.internal.compiler.lookup.Binding;
 import org.eclipse.jdt.internal.compiler.lookup.ExtraCompilerModifiers;
 import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
 import org.eclipse.jdt.internal.core.JavaModelManager.PerProjectInfo;
+import org.eclipse.jdt.internal.core.util.DeduplicationUtil;
 import org.eclipse.jdt.internal.core.util.Util;
 
 /**
@@ -46,7 +39,7 @@ public class BinaryMethod extends BinaryMember implements IMethod {
 	 * to perform equality test. <code>CharOperation.NO_STRINGS</code> indicates no
 	 * parameters. Note that the parameter type signatures are expected to be dot-based.
 	 */
-	protected String[] parameterTypes;
+	protected final String[] parameterTypes;
 	protected String [] erasedParamaterTypes; // lazily initialized via call to getErasedParameterTypes
 
 	/**
@@ -58,7 +51,11 @@ public class BinaryMethod extends BinaryMember implements IMethod {
 	protected String returnType;
 
 protected BinaryMethod(JavaElement parent, String name, String[] paramTypes) {
-	super(parent, name);
+	this(parent, name, paramTypes, 1);
+}
+
+protected BinaryMethod(JavaElement parent, String name, String[] paramTypes, int occurrenceCount) {
+	super(parent, name, occurrenceCount);
 	// Assertion disabled since bug https://bugs.eclipse.org/bugs/show_bug.cgi?id=179011
 	// Assert.isTrue(name.indexOf('.') == -1);
 	if (paramTypes == null) {
@@ -67,11 +64,18 @@ protected BinaryMethod(JavaElement parent, String name, String[] paramTypes) {
 		this.parameterTypes= paramTypes;
 	}
 }
+
 @Override
 public boolean equals(Object o) {
-	if (!(o instanceof BinaryMethod)) return false;
-	return super.equals(o) && Util.equalArraysOrNull(getErasedParameterTypes(), ((BinaryMethod)o).getErasedParameterTypes());
+	if (!(o instanceof BinaryMethod other)) return false;
+	return super.equals(o) && Util.equalArraysOrNull(getErasedParameterTypes(), other.getErasedParameterTypes());
 }
+
+@Override
+protected int calculateHashCode() {
+	return Util.combineHashCodes(super.calculateHashCode(), Arrays.hashCode(getErasedParameterTypes()));
+}
+
 @Override
 public IAnnotation[] getAnnotations() throws JavaModelException {
 	IBinaryMethod info = (IBinaryMethod) getElementInfo();
@@ -111,7 +115,7 @@ public ILocalVariable[] getParameters() throws JavaModelException {
 		if (i < startIndex) {
 			LocalVariable localVariable = new LocalVariable(
 					this,
-					new String(argumentNames[i]),
+					DeduplicationUtil.toString(argumentNames[i]),
 					0,
 					-1,
 					0,
@@ -211,22 +215,19 @@ public int getFlags() throws JavaModelException {
 		modifiers |= ExtraCompilerModifiers.AccDefaultMethod;
 	return modifiers;
 }
-/*
- * @see JavaElement#getHandleMemento(StringBuffer)
- */
 @Override
-protected void getHandleMemento(StringBuffer buff) {
+protected void getHandleMemento(StringBuilder buff) {
 	getParent().getHandleMemento(buff);
 	char delimiter = getHandleMementoDelimiter();
 	buff.append(delimiter);
 	escapeMementoName(buff, getElementName());
-	for (int i = 0; i < this.parameterTypes.length; i++) {
+	for (String parameterType : this.parameterTypes) {
 		buff.append(delimiter);
-		escapeMementoName(buff, this.parameterTypes[i]);
+		escapeMementoName(buff, parameterType);
 	}
-	if (this.occurrenceCount > 1) {
+	if (this.getOccurrenceCount() > 1) {
 		buff.append(JEM_COUNT);
-		buff.append(this.occurrenceCount);
+		buff.append(this.getOccurrenceCount());
 	}
 }
 /*
@@ -264,7 +265,7 @@ public String[] getParameterNames() throws JavaModelException {
 
 		// map source and try to find parameter names
 		if(paramNames == null) {
-			IBinaryType info = (IBinaryType) ((BinaryType) getDeclaringType()).getElementInfo();
+			IBinaryType info = ((BinaryType) getDeclaringType()).getElementInfo();
 			char[] source = mapper.findSource(type, info);
 			if (source != null) {
 				mapper.mapSource((NamedMember) type, source, info);
@@ -304,11 +305,11 @@ public String[] getParameterNames() throws JavaModelException {
 		if ((modifiers & ClassFileConstants.AccSynthetic) != 0) {
 			return this.parameterNames = getRawParameterNames(paramCount);
 		}
-		JavadocContents javadocContents = null;
+		IJavadocContents javadocContents = null;
 		IType declaringType = getDeclaringType();
 		PerProjectInfo projectInfo = JavaModelManager.getJavaModelManager().getPerProjectInfoCheckExistence(getJavaProject().getProject());
 		synchronized (projectInfo.javadocCache) {
-			javadocContents = (JavadocContents) projectInfo.javadocCache.get(declaringType);
+			javadocContents = (IJavadocContents) projectInfo.javadocCache.get(declaringType);
 			if (javadocContents == null) {
 				projectInfo.javadocCache.put(declaringType, BinaryType.EMPTY_JAVADOC);
 			}
@@ -521,15 +522,14 @@ private String [] getErasedParameterTypes() {
 		boolean erasureNeeded = false;
 		for (int i = 0; i < paramCount; i++) {
 			String parameterType = this.parameterTypes[i];
-			if ((erasedTypes[i] = Signature.getTypeErasure(parameterType)) != parameterType)
+			if ((erasedTypes[i] = Signature.getTypeErasure(parameterType)) != parameterType) {
 				erasureNeeded = true;
+			}
 		}
-		this.erasedParamaterTypes = erasureNeeded ? erasedTypes : this.parameterTypes;
+		this.erasedParamaterTypes = erasureNeeded ? DeduplicationUtil.intern(erasedTypes) : this.parameterTypes;
+
 	}
 	return this.erasedParamaterTypes;
-}
-private String getErasedParameterType(int index) {
-	return getErasedParameterTypes()[index];
 }
 
 @Override
@@ -606,17 +606,7 @@ public String getSignature() throws JavaModelException {
 	IBinaryMethod info = (IBinaryMethod) getElementInfo();
 	return new String(info.getMethodDescriptor());
 }
-/**
- * @see org.eclipse.jdt.internal.core.JavaElement#hashCode()
- */
-@Override
-public int hashCode() {
-   int hash = super.hashCode();
-	for (int i = 0, length = this.parameterTypes.length; i < length; i++) {
-	    hash = Util.combineHashCodes(hash, getErasedParameterType(i).hashCode());
-	}
-	return hash;
-}
+
 /*
  * @see IMethod
  */
@@ -685,14 +675,13 @@ public String readableName() {
 }
 @Override
 public JavaElement resolved(Binding binding) {
-	SourceRefElement resolvedHandle = new ResolvedBinaryMethod(this.getParent(), this.name, this.parameterTypes, new String(binding.computeUniqueKey()));
-	resolvedHandle.occurrenceCount = this.occurrenceCount;
+	SourceRefElement resolvedHandle = new ResolvedBinaryMethod(this.getParent(), this.name, this.parameterTypes, DeduplicationUtil.toString(binding.computeUniqueKey()), this.getOccurrenceCount());
 	return resolvedHandle;
 }/*
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	if (info == null) {
 		toStringName(buffer);
@@ -713,10 +702,10 @@ protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean s
 	}
 }
 @Override
-protected void toStringName(StringBuffer buffer) {
+protected void toStringName(StringBuilder buffer) {
 	toStringName(buffer, 0);
 }
-protected void toStringName(StringBuffer buffer, int flags) {
+protected void toStringName(StringBuilder buffer, int flags) {
 	buffer.append(getElementName());
 	buffer.append('(');
 	String[] parameters = getParameterTypes();
@@ -744,14 +733,14 @@ protected void toStringName(StringBuffer buffer, int flags) {
 		}
 	}
 	buffer.append(')');
-	if (this.occurrenceCount > 1) {
+	if (this.getOccurrenceCount() > 1) {
 		buffer.append("#"); //$NON-NLS-1$
-		buffer.append(this.occurrenceCount);
+		buffer.append(this.getOccurrenceCount());
 	}
 }
 @Override
 public String getAttachedJavadoc(IProgressMonitor monitor) throws JavaModelException {
-	JavadocContents javadocContents = ((BinaryType) this.getDeclaringType()).getJavadocContents(monitor);
+	IJavadocContents javadocContents = ((BinaryType) this.getDeclaringType()).getJavadocContents(monitor);
 	if (javadocContents == null) return null;
 	return javadocContents.getMethodDoc(this);
 }

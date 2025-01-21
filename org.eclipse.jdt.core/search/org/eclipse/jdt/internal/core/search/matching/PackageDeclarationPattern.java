@@ -13,7 +13,8 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core.search.matching;
 
-import org.eclipse.jdt.internal.core.index.*;
+import org.eclipse.jdt.internal.core.index.EntryResult;
+import org.eclipse.jdt.internal.core.index.Index;
 
 public class PackageDeclarationPattern extends JavaSearchPattern {
 
@@ -29,7 +30,7 @@ public EntryResult[] queryIn(Index index) {
 	return null;
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	output.append("PackageDeclarationPattern: <"); //$NON-NLS-1$
 	if (this.pkgName != null)
 		output.append(this.pkgName);

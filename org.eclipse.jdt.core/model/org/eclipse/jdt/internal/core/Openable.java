@@ -14,10 +14,10 @@
 package org.eclipse.jdt.internal.core;
 
 import java.util.Enumeration;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-
-import org.eclipse.core.resources.*;
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -25,6 +25,7 @@ import org.eclipse.core.runtime.PerformanceStats;
 import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.internal.codeassist.CompletionEngine;
 import org.eclipse.jdt.internal.codeassist.SelectionEngine;
+import org.eclipse.jdt.internal.compiler.env.IElementInfo;
 import org.eclipse.jdt.internal.core.util.Util;
 
 
@@ -34,7 +35,6 @@ import org.eclipse.jdt.internal.core.util.Util;
  * @see IJavaElement
  * @see IOpenable
  */
-@SuppressWarnings({"rawtypes"})
 public abstract class Openable extends JavaElement implements IOpenable, IBufferChangedListener {
 
 protected Openable(JavaElement parent) {
@@ -67,7 +67,7 @@ public void bufferChanged(BufferChangedEvent event) {
  * if successful, or false if an error is encountered while determining
  * the structure of this element.
  */
-protected abstract boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map newElements, IResource underlyingResource) throws JavaModelException;
+protected abstract boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map<IJavaElement, IElementInfo> newElements, IResource underlyingResource) throws JavaModelException;
 /*
  * Returns whether this element can be removed from the Java model cache to make space.
  */
@@ -178,7 +178,7 @@ protected IJavaElement[] codeSelect(org.eclipse.jdt.internal.compiler.env.ICompi
  * Returns a new element info for this element.
  */
 @Override
-protected Object createElementInfo() {
+protected OpenableElementInfo createElementInfo() {
 	return new OpenableElementInfo();
 }
 /**
@@ -199,7 +199,7 @@ public boolean exists() {
 				} catch (JavaModelException e) {
 					return false;
 				}
-				return rootInfo.rawPackageInfo.containsKey(((PackageFragment) this).names);
+				return rootInfo.rawPackageInfo.containsKey(List.of(((PackageFragment) this).names));
 			}
 			break;
 		case IJavaElement.CLASS_FILE:
@@ -218,30 +218,10 @@ public String findRecommendedLineSeparator() throws JavaModelException {
 	return Util.getLineSeparator(source, getJavaProject());
 }
 @Override
-protected void generateInfos(Object info, HashMap newElements, IProgressMonitor monitor) throws JavaModelException {
+protected void generateInfos(IElementInfo info, Map<IJavaElement, IElementInfo> newElements, IProgressMonitor monitor) throws JavaModelException {
 
 	if (JavaModelCache.VERBOSE){
-		String element;
-		switch (getElementType()) {
-			case JAVA_PROJECT:
-				element = "project"; //$NON-NLS-1$
-				break;
-			case PACKAGE_FRAGMENT_ROOT:
-				element = "root"; //$NON-NLS-1$
-				break;
-			case PACKAGE_FRAGMENT:
-				element = "package"; //$NON-NLS-1$
-				break;
-			case CLASS_FILE:
-				element = "class file"; //$NON-NLS-1$
-				break;
-			case COMPILATION_UNIT:
-				element = "compilation unit"; //$NON-NLS-1$
-				break;
-			default:
-				element = "element"; //$NON-NLS-1$
-		}
-		JavaModelManager.trace(Thread.currentThread() +" OPENING " + element + " " + this.toStringWithAncestors()); //$NON-NLS-1$//$NON-NLS-2$
+		JavaModelManager.trace(Thread.currentThread() +" OPENING " + JavaModelCache.getCacheType(this) + " " + this.toStringWithAncestors()); //$NON-NLS-1$//$NON-NLS-2$
 	}
 
 	// open its ancestors if needed
@@ -293,7 +273,7 @@ protected boolean ignoreErrorStatus(IStatus status) {
 public IBuffer getBuffer() throws JavaModelException {
 	if (hasBuffer()) {
 		// ensure element is open
-		Object info = getElementInfo();
+		IElementInfo info = getElementInfo();
 		IBuffer buffer = getBufferManager().getBuffer(this);
 		if (buffer == null) {
 			// try to (re)open a buffer
@@ -391,9 +371,9 @@ public boolean hasUnsavedChanges() throws JavaModelException{
 		elementType == PACKAGE_FRAGMENT_ROOT ||
 		elementType == JAVA_PROJECT ||
 		elementType == JAVA_MODEL) { // fix for 1FWNMHH
-		Enumeration openBuffers= getBufferManager().getOpenBuffers();
+		Enumeration<IBuffer> openBuffers= getBufferManager().getOpenBuffers();
 		while (openBuffers.hasMoreElements()) {
-			IBuffer buffer= (IBuffer)openBuffers.nextElement();
+			IBuffer buffer= openBuffers.nextElement();
 			if (buffer.hasUnsavedChanges()) {
 				IJavaElement owner= (IJavaElement)buffer.getOwner();
 				if (isAncestorOf(owner)) {
@@ -459,7 +439,7 @@ public void open(IProgressMonitor pm) throws JavaModelException {
  * By default, do nothing - subclasses that have buffers
  * must override as required.
  */
-protected IBuffer openBuffer(IProgressMonitor pm, Object info) throws JavaModelException {
+protected IBuffer openBuffer(IProgressMonitor pm, IElementInfo info) throws JavaModelException {
 	return null;
 }
 
@@ -522,7 +502,7 @@ abstract protected IStatus validateExistence(IResource underlyingResource);
 /*
  * Opens the ancestors of this openable that are not yet opened, validating their existence.
  */
-protected void openAncestors(HashMap newElements, IProgressMonitor monitor) throws JavaModelException {
+protected void openAncestors(Map<IJavaElement, IElementInfo> newElements, IProgressMonitor monitor) throws JavaModelException {
 	Openable openableParent = (Openable)getOpenableParent();
 	if (openableParent != null && !openableParent.isOpen()) {
 		openableParent.generateInfos(openableParent.createElementInfo(), newElements, monitor);

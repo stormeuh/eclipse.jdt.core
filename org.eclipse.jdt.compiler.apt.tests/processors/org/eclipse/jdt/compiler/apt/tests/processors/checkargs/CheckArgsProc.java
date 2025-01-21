@@ -18,7 +18,6 @@ package org.eclipse.jdt.compiler.apt.tests.processors.checkargs;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -48,7 +47,7 @@ public class CheckArgsProc extends AbstractProcessor {
 		if (roundEnv.processingOver())
 			return true;
 
-		Map<String, String> options = new HashMap<String, String>(processingEnv.getOptions());
+		Map<String, String> options = new HashMap<>(processingEnv.getOptions());
 		options.remove("phase");
 		if (_expected.length/2 != options.size()) {
 			throw new IllegalStateException(

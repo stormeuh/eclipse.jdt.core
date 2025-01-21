@@ -15,7 +15,6 @@ package org.eclipse.jdt.internal.core.search.matching;
 
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.search.SearchPattern;
-
 import org.eclipse.jdt.internal.core.util.Util;
 
 public class FieldPattern extends VariablePattern {
@@ -107,7 +106,7 @@ protected boolean mustResolve() {
 	return super.mustResolve();
 }
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	if (this.findDeclarations) {
 		output.append(this.findReferences
 			? "FieldCombinedPattern: " //$NON-NLS-1$

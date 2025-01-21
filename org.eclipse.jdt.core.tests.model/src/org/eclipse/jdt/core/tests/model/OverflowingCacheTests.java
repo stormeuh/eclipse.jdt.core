@@ -16,7 +16,7 @@ package org.eclipse.jdt.core.tests.model;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Map;
-
+import junit.framework.Test;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -24,11 +24,17 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.*;
-import org.eclipse.jdt.internal.core.*;
+import org.eclipse.jdt.internal.compiler.env.IElementInfo;
+import org.eclipse.jdt.internal.core.BufferCache;
+import org.eclipse.jdt.internal.core.BufferManager;
+import org.eclipse.jdt.internal.core.ElementCache;
+import org.eclipse.jdt.internal.core.JavaElementInfo;
+import org.eclipse.jdt.internal.core.JavaModelCache;
+import org.eclipse.jdt.internal.core.Openable;
+import org.eclipse.jdt.internal.core.OpenableElementInfo;
+import org.eclipse.jdt.internal.core.PackageFragmentRoot;
 import org.eclipse.jdt.internal.core.util.LRUCache.LRUCacheEntry;
 import org.eclipse.jdt.internal.core.util.MementoTokenizer;
-
-import junit.framework.Test;
 
 /**
  * Tests internal Java element cache and buffer cache.
@@ -178,12 +184,12 @@ public class OverflowingCacheTests extends ModifyingResourceTests {
 		 */
 		public boolean isOpen;
 
-		public OverflowingTestBuffer buffer;
+		public final OverflowingTestBuffer buffer;
 
 		/**
 		 * The cache this element is stored in
 		 */
-		public ElementCache<OverflowingTestOpenable> cache;
+		public final ElementCache<OverflowingTestOpenable> cache;
 
 		/**
 		 * Constructs a new openable, with unsaved changes as specified,
@@ -197,7 +203,7 @@ public class OverflowingCacheTests extends ModifyingResourceTests {
 			open(null);
 		}
 
-		protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map newElements, IResource underlyingResource) {
+		protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map<IJavaElement, IElementInfo> newElements, IResource underlyingResource) {
 			return false;
 		}
 
@@ -309,7 +315,7 @@ public class OverflowingCacheTests extends ModifyingResourceTests {
 				else
 					classpath[i] = JavaCore.newSourceEntry(new Path("/P/src" + i));
 			}
-			classpath[rootSize] = JavaCore.newVariableEntry(new Path("JCL_LIB"), null, null);
+			classpath[rootSize] = JavaCore.newVariableEntry(new Path("JCL18_LIB"), null, null);
 			project.setRawClasspath(classpath, new Path("/P/bin"), null);
 
 			// Open all roots

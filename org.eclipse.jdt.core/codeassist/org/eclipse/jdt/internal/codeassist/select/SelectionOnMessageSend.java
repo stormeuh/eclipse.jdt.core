@@ -56,9 +56,9 @@ public class SelectionOnMessageSend extends MessageSend {
 				ReferenceBinding currentType = interfacesToVisit[i];
 				MethodBinding[] methods = currentType.getMethods(methodBinding.selector);
 				if(methods != null) {
-					for (int k = 0; k < methods.length; k++) {
-						if(methodBinding.areParametersEqual(methods[k]))
-							return methods[k];
+					for (MethodBinding method : methods) {
+						if(methodBinding.areParametersEqual(method))
+							return method;
 					}
 				}
 
@@ -79,7 +79,7 @@ public class SelectionOnMessageSend extends MessageSend {
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 
 		output.append("<SelectOnMessageSend:"); //$NON-NLS-1$
 		if (!this.receiver.isImplicitThis()) this.receiver.printExpression(0, output).append('.');

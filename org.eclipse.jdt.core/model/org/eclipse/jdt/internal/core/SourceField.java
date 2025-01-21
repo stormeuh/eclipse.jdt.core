@@ -13,7 +13,12 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core;
 
-import org.eclipse.jdt.core.*;
+import org.eclipse.jdt.core.Flags;
+import org.eclipse.jdt.core.IField;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.internal.compiler.lookup.Binding;
 
@@ -28,6 +33,9 @@ public class SourceField extends NamedMember implements IField {
  */
 protected SourceField(JavaElement parent, String name) {
 	super(parent, name);
+}
+protected SourceField(JavaElement parent, String name, int occurrenceCount) {
+	super(parent, name, occurrenceCount);
 }
 @Override
 public boolean equals(Object o) {
@@ -153,16 +161,14 @@ public boolean isResolved() {
 	return false;
 }
 @Override
-public JavaElement resolved(Binding binding) {
-	SourceRefElement resolvedHandle = new ResolvedSourceField(this.getParent(), this.name, new String(binding.computeUniqueKey()));
-	resolvedHandle.occurrenceCount = this.occurrenceCount;
-	return resolvedHandle;
+public ResolvedSourceField resolved(Binding binding) {
+	return new ResolvedSourceField(this.getParent(), this.name, new String(binding.computeUniqueKey()), this.getOccurrenceCount());
 }
 /**
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	if (info == null) {
 		toStringName(buffer);

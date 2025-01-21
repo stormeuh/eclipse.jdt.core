@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
@@ -37,7 +36,6 @@ import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
-
 import org.eclipse.jdt.apt.pluggable.tests.annotations.GenClass6;
 
 /**
@@ -62,7 +60,7 @@ public class GenClass6Proc extends AbstractProcessor {
 		_processingEnv = processingEnv;
 		_filer = _processingEnv.getFiler();
 		_messager = _processingEnv.getMessager();
-		_classesToSummarize = new HashMap<String, Element>();
+		_classesToSummarize = new HashMap<>();
 	}
 
 	/* (non-Javadoc)
@@ -115,7 +113,7 @@ public class GenClass6Proc extends AbstractProcessor {
 
 		// Options allow the processor to expose certain error conditions.
 		if (null != options) {
-			Set<String> optionSet = new HashSet<String>(Arrays.asList(options));
+			Set<String> optionSet = new HashSet<>(Arrays.asList(options));
 			// See https://bugs.eclipse.org/269934: calling getEnclosedElements forces resolution of referenced types
 			if (optionSet.contains("forceElementResolution")) {
 				annotatedEl.getEnclosedElements();

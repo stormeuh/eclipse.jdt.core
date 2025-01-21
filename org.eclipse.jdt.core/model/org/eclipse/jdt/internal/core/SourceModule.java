@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.core;
 
 import java.util.Map;
-
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.CharOperation;
@@ -43,7 +42,7 @@ public class SourceModule extends NamedMember implements AbstractModule {
 	}
 	@Override
 	public String toString(String lineDelimiter) {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		try {
 			toStringContent(buffer, lineDelimiter);
 		} catch (JavaModelException e) {

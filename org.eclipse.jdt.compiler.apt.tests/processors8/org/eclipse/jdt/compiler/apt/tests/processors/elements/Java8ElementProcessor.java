@@ -27,23 +27,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.TypeParameterElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
@@ -52,18 +42,7 @@ import javax.lang.model.type.NullType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
-
-import org.eclipse.jdt.compiler.apt.tests.annotations.Foo;
-import org.eclipse.jdt.compiler.apt.tests.annotations.FooContainer;
-import org.eclipse.jdt.compiler.apt.tests.annotations.FooNonContainer;
-import org.eclipse.jdt.compiler.apt.tests.annotations.Goo;
-import org.eclipse.jdt.compiler.apt.tests.annotations.GooNonContainer;
-import org.eclipse.jdt.compiler.apt.tests.annotations.IFoo;
-import org.eclipse.jdt.compiler.apt.tests.annotations.IFooContainer;
-import org.eclipse.jdt.compiler.apt.tests.annotations.TFoo;
-import org.eclipse.jdt.compiler.apt.tests.annotations.TFooContainer;
-import org.eclipse.jdt.compiler.apt.tests.annotations.Type;
-import org.eclipse.jdt.compiler.apt.tests.annotations.Type$1;
+import org.eclipse.jdt.compiler.apt.tests.annotations.*;
 import org.eclipse.jdt.compiler.apt.tests.processors.base.BaseProcessor;
 
 /**
@@ -1094,11 +1073,9 @@ public class Java8ElementProcessor extends BaseProcessor {
 	private void createPackageBinary() throws IOException {
 		String path = packageName.replace('.', '/');
 		ClassLoader loader = getClass().getClassLoader();
-		InputStream in = loader.getResourceAsStream(path + "/package-info.class");
-		try {
+		try (InputStream in = loader.getResourceAsStream(path + "/package-info.class")) {
 			Filer filer = processingEnv.getFiler();
-			OutputStream out = filer.createClassFile(packageName + ".package-info").openOutputStream();
-			try {
+			try (OutputStream out = filer.createClassFile(packageName + ".package-info").openOutputStream()) {
 				if (in != null && out != null) {
 					int c = in.read();
 					while (c != -1) {
@@ -1106,16 +1083,12 @@ public class Java8ElementProcessor extends BaseProcessor {
 						c = in.read();
 					}
 				}
-			} finally {
-				out.close();
 			}
-		} finally {
-			in.close();
 		}
 	}
 
 	private String getExceptionStackTrace(Throwable t) {
-		StringBuffer buf = new StringBuffer(t.getMessage());
+		StringBuilder buf = new StringBuilder(t.getMessage());
 		StackTraceElement[] traces = t.getStackTrace();
 		for (int i = 0; i < traces.length; i++) {
 			StackTraceElement trace = traces[i];
@@ -1147,7 +1120,7 @@ public class Java8ElementProcessor extends BaseProcessor {
 	private String getAnnotationString(AnnotationMirror annot) {
 		DeclaredType annotType = annot.getAnnotationType();
 		TypeElement type = (TypeElement) annotType.asElement();
-		StringBuffer buf = new StringBuffer("@" + type.getSimpleName());
+		StringBuilder buf = new StringBuilder("@" + type.getSimpleName());
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annot.getElementValues();
 		Set<? extends ExecutableElement> keys = values.keySet();
 		buf.append('(');
@@ -1181,7 +1154,7 @@ public class Java8ElementProcessor extends BaseProcessor {
 
 	public void assertModifiers(Set<Modifier> modifiers, String[] expected) {
 		assertEquals("Incorrect no of modifiers", modifiers.size(), expected.length);
-		Set<String> actual = new HashSet<String>(expected.length);
+		Set<String> actual = new HashSet<>(expected.length);
 		for (Modifier modifier : modifiers) {
 			actual.add(modifier.toString());
 		}
@@ -1244,7 +1217,7 @@ public class Java8ElementProcessor extends BaseProcessor {
 
 	public void assertEquals(String msg, int expected, int actual) {
 		if (expected != actual) {
-			StringBuffer buf = new StringBuffer();
+			StringBuilder buf = new StringBuilder();
 			buf.append(msg);
 			buf.append(", expected " + expected + " but was " + actual);
 			reportError(buf.toString());
@@ -1255,7 +1228,7 @@ public class Java8ElementProcessor extends BaseProcessor {
 
 		}
 	}
-	private class AssertionFailedError extends Error {
+	private static class AssertionFailedError extends Error {
 		private static final long serialVersionUID = 1L;
 
 		public AssertionFailedError(String msg) {

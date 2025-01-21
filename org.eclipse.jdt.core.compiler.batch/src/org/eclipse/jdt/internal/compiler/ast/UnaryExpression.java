@@ -17,16 +17,22 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.impl.*;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.codegen.BranchLabel;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.BooleanConstant;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 public class UnaryExpression extends OperatorExpression {
 
 	public Expression expression;
 	public Constant optimizedBooleanConstant;
+	private int trueInitStateIndex = -1;
 
 	public UnaryExpression(Expression expression, int operator) {
 		this.expression = expression;
@@ -44,6 +50,7 @@ public class UnaryExpression extends OperatorExpression {
 				analyseCode(currentScope, flowContext, flowInfo).
 				asNegatedCondition();
 			flowContext.tagBits ^= FlowContext.INSIDE_NEGATION;
+			this.trueInitStateIndex = currentScope.methodScope().recordInitializationStates(flowInfo.initsWhenTrue());
 		} else {
 			flowInfo = this.expression.
 				analyseCode(currentScope, flowContext, flowInfo);
@@ -102,10 +109,12 @@ public class UnaryExpression extends OperatorExpression {
 							(falseLabel = new BranchLabel(codeStream)),
 							valueRequired);
 						if (valueRequired) {
+							if (this.trueInitStateIndex != -1) {
+								codeStream.removeNotDefinitelyAssignedVariables(currentScope, this.trueInitStateIndex);
+							}
 							codeStream.iconst_0();
 							if (falseLabel.forwardReferenceCount() > 0) {
 								codeStream.goto_(endifLabel = new BranchLabel(codeStream));
-								codeStream.decrStackSize(1);
 								falseLabel.place();
 								codeStream.iconst_1();
 								endifLabel.place();
@@ -182,7 +191,7 @@ public class UnaryExpression extends OperatorExpression {
 
 	/**
 	 * Boolean operator code generation
-	 *	Optimized operations are: &&, ||, <, <=, >, >=, &, |, ^
+	 *	Optimized operations are: {@code &&, ||, <, <=, >, >=, &, |, ^ }
 	 */
 	@Override
 	public void generateOptimizedBoolean(
@@ -219,28 +228,10 @@ public class UnaryExpression extends OperatorExpression {
 	}
 
 	@Override
-	public StringBuffer printExpressionNoParenthesis(int indent, StringBuffer output) {
+	public StringBuilder printExpressionNoParenthesis(int indent, StringBuilder output) {
 
 		output.append(operatorToString()).append(' ');
 		return this.expression.printExpression(0, output);
-	}
-	@Override
-	public void collectPatternVariablesToScope(LocalVariableBinding[] variables, BlockScope scope) {
-		this.expression.collectPatternVariablesToScope(variables, scope);
-		if (((this.bits & OperatorMASK) >> OperatorSHIFT) == NOT) {
-			variables = this.expression.getPatternVariablesWhenTrue();
-			if (variables != null)
-				this.addPatternVariablesWhenFalse(variables);
-
-			variables = this.expression.getPatternVariablesWhenFalse();
-			if (variables != null)
-				this.addPatternVariablesWhenTrue(variables);
-		} else {
-			variables = this.expression.getPatternVariablesWhenTrue();
-			this.addPatternVariablesWhenTrue(variables);
-			variables = this.expression.getPatternVariablesWhenFalse();
-			this.addPatternVariablesWhenFalse(variables);
-		}
 	}
 	@Override
 	public TypeBinding resolveType(BlockScope scope) {
@@ -333,14 +324,19 @@ public class UnaryExpression extends OperatorExpression {
 		}
 		return this.resolvedType;
 	}
+
 	@Override
-	public boolean containsPatternVariable() {
-		return this.expression.containsPatternVariable();
+	public LocalVariableBinding[] bindingsWhenFalse() {
+		return ((this.bits & OperatorMASK) >> OperatorSHIFT) == NOT ?
+				this.expression.bindingsWhenTrue(): NO_VARIABLES;
 	}
+
 	@Override
-	public LocalDeclaration getPatternVariable() {
-		return this.expression.getPatternVariable();
+	public LocalVariableBinding[] bindingsWhenTrue() {
+		return ((this.bits & OperatorMASK) >> OperatorSHIFT) == NOT ?
+				this.expression.bindingsWhenFalse(): NO_VARIABLES;
 	}
+
 
 	@Override
 	public void traverse(

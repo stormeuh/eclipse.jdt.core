@@ -19,7 +19,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-
 import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.env.IModuleAwareNameEnvironment;
 import org.eclipse.jdt.internal.compiler.env.INameEnvironment;
@@ -95,7 +94,7 @@ public class InMemoryNameEnvironment9 extends InMemoryNameEnvironment implements
 
 	@Override
 	public char[][] getAllAutomaticModules() {
-		return collect(env -> env.getAllAutomaticModules(), char[][]::new);
+		return collect(IModuleAwareNameEnvironment::getAllAutomaticModules, char[][]::new);
 	}
 
 }

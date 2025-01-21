@@ -31,6 +31,10 @@ public class ResolvedBinaryMethod extends BinaryMethod {
 		super(parent, name, parameterTypes);
 		this.uniqueKey = uniqueKey;
 	}
+	public ResolvedBinaryMethod(JavaElement parent, String name, String[] parameterTypes, String uniqueKey, int occurrenceCount) {
+		super(parent, name, parameterTypes, occurrenceCount);
+		this.uniqueKey = uniqueKey;
+	}
 
 	@Override
 	public String getKey() {
@@ -48,10 +52,10 @@ public class ResolvedBinaryMethod extends BinaryMethod {
 	}
 
 	/**
-	 * @private Debugging purposes
+	 * for debugging only
 	 */
 	@Override
-	protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+	protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 		super.toStringInfo(tab, buffer, info, showResolvedInfo);
 		if (showResolvedInfo) {
 			buffer.append(" {key="); //$NON-NLS-1$
@@ -61,9 +65,7 @@ public class ResolvedBinaryMethod extends BinaryMethod {
 	}
 
 	@Override
-	public JavaElement unresolved() {
-		SourceRefElement handle = new BinaryMethod(this.getParent(), this.name, this.parameterTypes);
-		handle.occurrenceCount = this.occurrenceCount;
-		return handle;
+	public BinaryMethod unresolved() {
+		return new BinaryMethod(this.getParent(), this.name, this.parameterTypes, this.getOccurrenceCount());
 	}
 }

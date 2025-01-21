@@ -14,11 +14,13 @@
 package org.eclipse.jdt.core.eval;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.*;
+import org.eclipse.jdt.core.CompletionRequestor;
+import org.eclipse.jdt.core.ICompletionRequestor;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.WorkingCopyOwner;
 
 /**
  * An evaluation context supports evaluating code snippets.
@@ -191,7 +193,7 @@ public interface IEvaluationContext {
 	 * assist operation when a specified amount of time is reached could be used.
 	 * </p>
 	 *
-	 * <pre>
+	 * <pre>{@code
 	 * new IProgressMonitor() {
 	 *     private final static int TIMEOUT = 500; //ms
 	 *     private long endTime;
@@ -203,6 +205,7 @@ public interface IEvaluationContext {
 	 *     }
 	 *     ...
 	 * };
+	 * }
 	 * </pre>
 	 *
 	 * @param codeSnippet the code snippet to complete in
@@ -278,7 +281,7 @@ public interface IEvaluationContext {
 	 * assist operation when a specified amount of time is reached could be used.
 	 * </p>
 	 *
-	 * <pre>
+	 * <pre>{@code
 	 * new IProgressMonitor() {
 	 *     private final static int TIMEOUT = 500; //ms
 	 *     private long endTime;
@@ -290,6 +293,7 @@ public interface IEvaluationContext {
 	 *     }
 	 *     ...
 	 * };
+	 * }
 	 * </pre>
 	 *
 	 * @param codeSnippet the code snippet to complete in

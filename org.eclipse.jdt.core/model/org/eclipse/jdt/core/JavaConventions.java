@@ -21,21 +21,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
-
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.jdt.core.compiler.*;
+import org.eclipse.jdt.core.compiler.CharOperation;
+import org.eclipse.jdt.core.compiler.InvalidInputException;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.lookup.TypeConstants;
 import org.eclipse.jdt.internal.compiler.parser.Scanner;
 import org.eclipse.jdt.internal.compiler.parser.ScannerHelper;
 import org.eclipse.jdt.internal.compiler.parser.TerminalTokens;
-import org.eclipse.jdt.internal.core.*;
+import org.eclipse.jdt.internal.core.ClasspathEntry;
+import org.eclipse.jdt.internal.core.JavaModelStatus;
 import org.eclipse.jdt.internal.core.util.Messages;
 
 /**
@@ -58,7 +59,7 @@ public final class JavaConventions {
 	private static String RECORD_ID = "record"; //$NON-NLS-1$
 
 	static {
-		javaVersions= new ArrayList<String>();
+		javaVersions= new ArrayList<>();
 		javaVersions.add(0, CompilerOptions.VERSION_10);
 		javaVersions.add(1, CompilerOptions.VERSION_11);
 		javaVersions.add(2, CompilerOptions.VERSION_12);
@@ -67,17 +68,17 @@ public final class JavaConventions {
 
 		restrictedIdentifiersMap= new HashMap<>();
 		//restricted identifier for Java10 and above
-		Set<String> set= new HashSet<String>();
+		Set<String> set= new HashSet<>();
 		set.add(new String(VAR_ID));
 		restrictedIdentifiersMap.put(CompilerOptions.VERSION_10, set);
 		//restricted identifier for Java14 and above
-		set= new HashSet<String>();
+		set= new HashSet<>();
 		set.add(new String(YIELD_ID));
 		restrictedIdentifiersMap.put(CompilerOptions.VERSION_14, set);
 
 		restrictedIdentifierPreviewMap= new HashMap<>();
 		//restricted identifier for Java10 and above
-		set= new HashSet<String>();
+		set= new HashSet<>();
 		set.add(new String(RECORD_ID));
 		restrictedIdentifierPreviewMap.put(CompilerOptions.VERSION_14, set);
 

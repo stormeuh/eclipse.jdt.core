@@ -16,7 +16,6 @@ package org.eclipse.jdt.core.tests.compiler.regression;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.core.tests.util.Util;
 import org.eclipse.jdt.internal.compiler.CompilationResult;
@@ -116,7 +115,7 @@ public class AbstractRegressionTest9 extends AbstractRegressionTest {
 	}
 
 	public Parser createParser() {
-		Map<String,String> opts = new HashMap<String, String>();
+		Map<String,String> opts = new HashMap<>();
 		opts.put(CompilerOptions.OPTION_Source, CompilerOptions.VERSION_9);
 		return new Parser(
 				new ProblemReporter(getErrorHandlingPolicy(), new CompilerOptions(opts), getProblemFactory()),

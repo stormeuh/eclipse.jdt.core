@@ -18,10 +18,8 @@
 package org.eclipse.jdt.internal.core;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipFile;
-
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -31,33 +29,19 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.jdt.core.CompletionRequestor;
-import org.eclipse.jdt.core.IBuffer;
-import org.eclipse.jdt.core.IClassFile;
-import org.eclipse.jdt.core.IClasspathEntry;
-import org.eclipse.jdt.core.ICodeAssist;
-import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaModelStatusConstants;
-import org.eclipse.jdt.core.IMember;
-import org.eclipse.jdt.core.IOrdinaryClassFile;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.ITypeRoot;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.Signature;
-import org.eclipse.jdt.core.WorkingCopyOwner;
+import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileReader;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFormatException;
 import org.eclipse.jdt.internal.compiler.classfmt.ExternalAnnotationDecorator;
 import org.eclipse.jdt.internal.compiler.classfmt.ExternalAnnotationProvider;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
 import org.eclipse.jdt.internal.compiler.env.IDependent;
+import org.eclipse.jdt.internal.compiler.env.IElementInfo;
 import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.nd.java.model.BinaryTypeDescriptor;
 import org.eclipse.jdt.internal.core.nd.java.model.BinaryTypeFactory;
+import org.eclipse.jdt.internal.core.util.DeduplicationUtil;
 import org.eclipse.jdt.internal.core.util.MementoTokenizer;
 import org.eclipse.jdt.internal.core.util.Util;
 
@@ -65,18 +49,20 @@ import org.eclipse.jdt.internal.core.util.Util;
  * @see IClassFile
  */
 
-@SuppressWarnings({"rawtypes"})
 public class ClassFile extends AbstractClassFile implements IOrdinaryClassFile {
 
 	protected BinaryType binaryType = null;
 
 	private IPath externalAnnotationBase;
-
+	final String typeName;
 /*
  * Creates a handle to a class file.
  */
 protected ClassFile(PackageFragment parent, String nameWithoutExtension) {
 	super(parent, nameWithoutExtension);
+	// Internal class file name doesn't contain ".class" file extension
+	int lastDollar = this.name.lastIndexOf('$');
+	this.typeName = lastDollar > -1 ? DeduplicationUtil.intern(Util.localTypeName(this.name, lastDollar, this.name.length())) : this.name;
 }
 
 /**
@@ -88,7 +74,7 @@ protected ClassFile(PackageFragment parent, String nameWithoutExtension) {
  * @see Signature
  */
 @Override
-protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map newElements, IResource underlyingResource) throws JavaModelException {
+protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map<IJavaElement, IElementInfo> newElements, IResource underlyingResource) throws JavaModelException {
 	IBinaryType typeInfo = getBinaryTypeInfo();
 	if (typeInfo == null) {
 		// The structure of a class file is unknown if a class file format errors occurred
@@ -102,7 +88,7 @@ protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, 
 	info.setChildren(new IJavaElement[] {type});
 	newElements.put(type, typeInfo);
 	// Read children
-	((ClassFileInfo) info).readBinaryChildren(this, (HashMap) newElements, typeInfo);
+	((ClassFileInfo) info).readBinaryChildren(this, newElements, typeInfo);
 	return true;
 }
 
@@ -115,7 +101,7 @@ public void codeComplete(int offset, CompletionRequestor requestor, WorkingCopyO
 			new BasicCompilationUnit(
 				getSource().toCharArray(),
 				null,
-				type.sourceFileName((IBinaryType) type.getElementInfo()),
+				type.sourceFileName(type.getElementInfo()),
 				getJavaProject()); // use project to retrieve corresponding .java IFile
 		codeComplete(cu, cu, offset, requestor, owner, null/*extended context isn't computed*/, monitor);
 	}
@@ -130,7 +116,7 @@ public IJavaElement[] codeSelect(int offset, int length, WorkingCopyOwner owner)
 	char[] contents;
 	if (buffer != null && (contents = buffer.getCharacters()) != null) {
 	    BinaryType type = (BinaryType) getType();
-		BasicCompilationUnit cu = new BasicCompilationUnit(contents, null, type.sourceFileName((IBinaryType) type.getElementInfo()), this);
+		BasicCompilationUnit cu = new BasicCompilationUnit(contents, null, type.sourceFileName(type.getElementInfo()), this);
 		return super.codeSelect(cu, offset, length, owner);
 	} else {
 		//has no associated souce
@@ -141,7 +127,7 @@ public boolean existsUsingJarTypeCache() {
 	if (getPackageFragmentRoot().isArchive()) {
 		JavaModelManager manager = JavaModelManager.getJavaModelManager();
 		IType type = getType();
-		Object info = manager.getInfo(type);
+		IElementInfo info = manager.getInfo(type);
 		if (info == JavaModelCache.NON_EXISTING_JAR_TYPE_INFO)
 			return false;
 		else if (info != null)
@@ -151,8 +137,7 @@ public boolean existsUsingJarTypeCache() {
 		if (parentInfo != null) {
 			// if parent is open, this class file must be in its children
 			IJavaElement[] children = parentInfo.getChildren();
-			for (int i = 0, length = children.length; i < length; i++) {
-				IJavaElement child = children[i];
+			for (IJavaElement child : children) {
 				if (child instanceof ClassFile && this.name.equals(((ClassFile) child).name))
 					return true;
 			}
@@ -387,8 +372,8 @@ public IJavaElement getHandleFromMemento(String token, MementoTokenizer memento,
 	switch (token.charAt(0)) {
 		case JEM_TYPE:
 			if (!memento.hasMoreTokens()) return this;
-			String typeName = memento.nextToken();
-			JavaElement type = new BinaryType(this, typeName);
+			String newtypeName = memento.nextToken();
+			JavaElement type = new BinaryType(this, DeduplicationUtil.intern(newtypeName));
 			return type.getHandleFromMemento(memento, owner);
 	}
 	return null;
@@ -424,9 +409,7 @@ public IType getType() {
 	return this.binaryType;
 }
 public String getTypeName() {
-	// Internal class file name doesn't contain ".class" file extension
-	int lastDollar = this.name.lastIndexOf('$');
-	return lastDollar > -1 ? Util.localTypeName(this.name, lastDollar, this.name.length()) : this.name;
+	return this.typeName;
 }
 /*
  * @see IClassFile
@@ -467,7 +450,7 @@ public boolean isInterface() throws JavaModelException {
  * @see Openable
  */
 @Override
-protected IBuffer openBuffer(IProgressMonitor pm, Object info) throws JavaModelException {
+protected IBuffer openBuffer(IProgressMonitor pm, IElementInfo info) throws JavaModelException {
 	// Check the cache for the top-level type first
 	IType outerMostEnclosingType = getOuterMostEnclosingType();
 	IBuffer buffer = getBufferManager().getBuffer(outerMostEnclosingType.getClassFile());

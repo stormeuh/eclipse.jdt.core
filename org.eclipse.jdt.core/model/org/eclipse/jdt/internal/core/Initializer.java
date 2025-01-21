@@ -14,14 +14,15 @@
 package org.eclipse.jdt.internal.core;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IInitializer;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaModelStatusConstants;
+import org.eclipse.jdt.core.IMember;
+import org.eclipse.jdt.core.ISourceManipulation;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.internal.core.util.Util;
 
 /**
  * @see IInitializer
@@ -29,18 +30,15 @@ import org.eclipse.jdt.internal.core.util.Util;
 
 public class Initializer extends Member implements IInitializer {
 
-protected Initializer(JavaElement parent, int count) {
-	super(parent);
-	// 0 is not valid: this first occurrence is occurrence 1.
-	if (count <= 0)
-		throw new IllegalArgumentException();
-	this.occurrenceCount = count;
+protected Initializer(JavaElement parent, int occurrenceCount) {
+	super(parent, occurrenceCount);
 }
 @Override
 public boolean equals(Object o) {
 	if (!(o instanceof Initializer)) return false;
 	return super.equals(o);
 }
+
 /**
  * @see IJavaElement
  */
@@ -49,13 +47,13 @@ public int getElementType() {
 	return INITIALIZER;
 }
 /**
- * @see JavaElement#getHandleMemento(StringBuffer)
+ * @see JavaElement#getHandleMemento(StringBuilder)
  */
 @Override
-protected void getHandleMemento(StringBuffer buff) {
+protected void getHandleMemento(StringBuilder buff) {
 	getParent().getHandleMemento(buff);
 	buff.append(getHandleMementoDelimiter());
-	buff.append(this.occurrenceCount);
+	buff.append(this.getOccurrenceCount());
 }
 /**
  * @see JavaElement#getHandleMemento()
@@ -63,10 +61,6 @@ protected void getHandleMemento(StringBuffer buff) {
 @Override
 protected char getHandleMementoDelimiter() {
 	return JavaElement.JEM_INITIALIZER;
-}
-@Override
-public int hashCode() {
-	return Util.combineHashCodes(this.getParent().hashCode(), this.occurrenceCount);
 }
 @Override
 public String readableName() {
@@ -95,21 +89,21 @@ public JavaElement getPrimaryElement(boolean checkOwner) {
 		if (cu == null || cu.isPrimary()) return this;
 	}
 	IJavaElement primaryParent = this.getParent().getPrimaryElement(false);
-	return (JavaElement) ((IType) primaryParent).getInitializer(this.occurrenceCount);
+	return (JavaElement) ((IType) primaryParent).getInitializer(this.getOccurrenceCount());
 }
 /**
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	if (info == null) {
 		buffer.append("<initializer #"); //$NON-NLS-1$
-		buffer.append(this.occurrenceCount);
+		buffer.append(this.getOccurrenceCount());
 		buffer.append("> (not open)"); //$NON-NLS-1$
 	} else if (info == NO_INFO) {
 		buffer.append("<initializer #"); //$NON-NLS-1$
-		buffer.append(this.occurrenceCount);
+		buffer.append(this.getOccurrenceCount());
 		buffer.append(">"); //$NON-NLS-1$
 	} else {
 		try {
@@ -118,7 +112,7 @@ protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean s
 				buffer.append("static "); //$NON-NLS-1$
 			}
 		buffer.append("initializer #"); //$NON-NLS-1$
-		buffer.append(this.occurrenceCount);
+		buffer.append(this.getOccurrenceCount());
 		buffer.append(">"); //$NON-NLS-1$
 		} catch (JavaModelException e) {
 			buffer.append("<JavaModelException in toString of " + getElementName()); //$NON-NLS-1$

@@ -17,7 +17,6 @@ import java.text.NumberFormat;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
-
 import org.eclipse.jdt.internal.core.JavaElement;
 import org.eclipse.jdt.internal.core.util.ToStringSorter.Pair;
 
@@ -434,7 +433,7 @@ public class LRUCache<K, V> implements Cloneable {
 	 * currently in the cache.
 	 */
 	public ICacheEnumeration<K, V> keysAndValues() {
-		return new ICacheEnumeration<K, V>() {
+		return new ICacheEnumeration<>() {
 
 			Enumeration<LRUCacheEntry<K, V>> values = LRUCache.this.entryTable.elements();
 			LRUCacheEntry<K, V> entry;

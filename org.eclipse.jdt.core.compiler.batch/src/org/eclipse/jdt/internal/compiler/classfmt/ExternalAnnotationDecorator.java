@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.net.URI;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-
 import org.eclipse.jdt.internal.compiler.env.IBinaryAnnotation;
 import org.eclipse.jdt.internal.compiler.env.IBinaryField;
 import org.eclipse.jdt.internal.compiler.env.IBinaryMethod;
@@ -143,6 +142,11 @@ public class ExternalAnnotationDecorator implements IBinaryType {
 	}
 
 	@Override
+	public char[][] getPermittedSubtypesNames() {
+		return this.inputType.getPermittedSubtypesNames();
+	}
+
+	@Override
 	public long getTagBits() {
 		return this.inputType.getTagBits();
 	}
@@ -196,6 +200,7 @@ public class ExternalAnnotationDecorator implements IBinaryType {
 	 *             basePath is a directory <em>is</em> expected, and simply answered with null. If basePath is neither a
 	 *             directory nor a zip file, this is unexpected.
 	 */
+	@SuppressWarnings("resource")
 	public static ZipFile getAnnotationZipFile(String basePath, ZipFileProducer producer) throws IOException {
 		File annotationBase = new File(basePath);
 		if (!annotationBase.isFile()) {
@@ -227,8 +232,8 @@ public class ExternalAnnotationDecorator implements IBinaryType {
 			File annotationBase = new File(basePath);
 			if (annotationBase.isDirectory()) {
 				String filePath = annotationBase.getAbsolutePath() + '/' + qualifiedBinaryFileName;
-				try {
-					return new ExternalAnnotationProvider(new FileInputStream(filePath), qualifiedBinaryTypeName);
+				try (FileInputStream input = new FileInputStream(filePath)) {
+					return new ExternalAnnotationProvider(input, qualifiedBinaryTypeName);
 				} catch (FileNotFoundException e) {
 					// Expected, no need to report an error here
 					return null;

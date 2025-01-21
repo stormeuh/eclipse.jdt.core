@@ -13,6 +13,7 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.tests.model;
 
+import junit.framework.Test;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
@@ -20,20 +21,15 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jdt.core.*;
-import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IJavaProject;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.tests.util.Util;
 import org.eclipse.jdt.internal.core.JavaElement;
-
-import junit.framework.Test;
 
 public class RootManipulationsTests extends ModifyingResourceTests {
 public RootManipulationsTests(String name) {
 	super(name);
 }
 protected void assertJavaProject(String expected, IJavaProject project) throws CoreException {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	populate(buffer, project, 0);
 
 	String actual = buffer.toString();
@@ -79,7 +75,7 @@ protected void move(IPackageFragmentRoot root, IPath destination, IClasspathEntr
 		sibling,
 		null);
 }
-protected void populate(StringBuffer buffer, IJavaElement element, int indent) throws CoreException {
+protected void populate(StringBuilder buffer, IJavaElement element, int indent) throws CoreException {
 	if (!(element instanceof IParent) || !(element instanceof IOpenable)) return;
 
 	if (buffer.length() != 0) {
@@ -117,7 +113,7 @@ protected void populate(StringBuffer buffer, IJavaElement element, int indent) t
 		}
 	}
 }
-protected void populate(StringBuffer buffer, Object nonJavaResource, int indent) {
+protected void populate(StringBuilder buffer, Object nonJavaResource, int indent) {
 	if (buffer.length() != 0) {
 		buffer.append("\n");
 	}

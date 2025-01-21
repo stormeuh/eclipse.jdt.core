@@ -13,7 +13,16 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core;
 
-import org.eclipse.jdt.core.*;
+import java.util.Arrays;
+import org.eclipse.jdt.core.Flags;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.ILocalVariable;
+import org.eclipse.jdt.core.IMemberValuePair;
+import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.ITypeParameter;
+import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.lookup.Binding;
 import org.eclipse.jdt.internal.core.util.Util;
@@ -32,7 +41,11 @@ public class SourceMethod extends NamedMember implements IMethod {
 	protected String[] parameterTypes;
 
 protected SourceMethod(JavaElement parent, String name, String[] parameterTypes) {
-	super(parent, name);
+	this(parent, name, parameterTypes, 1);
+}
+
+protected SourceMethod(JavaElement parent, String name, String[] parameterTypes, int occurrenceCount) {
+	super(parent, name, occurrenceCount);
 	// Assertion disabled since bug https://bugs.eclipse.org/bugs/show_bug.cgi?id=179011
 	// Assert.isTrue(name.indexOf('.') == -1);
 	if (parameterTypes == null) {
@@ -46,15 +59,21 @@ protected void closing(Object info) throws JavaModelException {
 	super.closing(info);
 	SourceMethodElementInfo elementInfo = (SourceMethodElementInfo) info;
 	ITypeParameter[] typeParameters = elementInfo.typeParameters;
-	for (int i = 0, length = typeParameters.length; i < length; i++) {
-		((TypeParameter) typeParameters[i]).close();
+	for (ITypeParameter typeParameter : typeParameters) {
+		((TypeParameter) typeParameter).close();
 	}
 }
 @Override
 public boolean equals(Object o) {
-	if (!(o instanceof SourceMethod)) return false;
-	return super.equals(o) && Util.equalArraysOrNull(this.parameterTypes, ((SourceMethod)o).parameterTypes);
+	if (!(o instanceof SourceMethod other)) return false;
+	return super.equals(o) && Util.equalArraysOrNull(this.parameterTypes, other.parameterTypes);
 }
+
+@Override
+protected int calculateHashCode() {
+	return Util.combineHashCodes(super.calculateHashCode(), Arrays.hashCode(this.parameterTypes));
+}
+
 @Override
 public IMemberValuePair getDefaultValue() throws JavaModelException {
 	SourceMethodElementInfo sourceMethodInfo = (SourceMethodElementInfo) getElementInfo();
@@ -80,21 +99,21 @@ public String[] getExceptionTypes() throws JavaModelException {
 	return CompilationUnitStructureRequestor.convertTypeNamesToSigs(exs);
 }
 /**
- * @see JavaElement#getHandleMemento(StringBuffer)
+ * @see JavaElement#getHandleMemento(StringBuilder)
  */
 @Override
-protected void getHandleMemento(StringBuffer buff) {
+protected void getHandleMemento(StringBuilder buff) {
 	getParent().getHandleMemento(buff);
 	char delimiter = getHandleMementoDelimiter();
 	buff.append(delimiter);
 	escapeMementoName(buff, getElementName());
-	for (int i = 0; i < this.parameterTypes.length; i++) {
+	for (String parameterType : this.parameterTypes) {
 		buff.append(delimiter);
-		escapeMementoName(buff, this.parameterTypes[i]);
+		escapeMementoName(buff, parameterType);
 	}
-	if (this.occurrenceCount > 1) {
+	if (this.getOccurrenceCount() > 1) {
 		buff.append(JEM_COUNT);
-		buff.append(this.occurrenceCount);
+		buff.append(this.getOccurrenceCount());
 	}
 }
 /**
@@ -213,17 +232,6 @@ public String getSignature() throws JavaModelException {
 	return Signature.createMethodSignature(this.parameterTypes, Signature.createTypeSignature(info.getReturnTypeName(), false));
 }
 /**
- * @see org.eclipse.jdt.internal.core.JavaElement#hashCode()
- */
-@Override
-public int hashCode() {
-   int hash = super.hashCode();
-	for (int i = 0, length = this.parameterTypes.length; i < length; i++) {
-	    hash = Util.combineHashCodes(hash, this.parameterTypes[i].hashCode());
-	}
-	return hash;
-}
-/**
  * @see IMethod
  */
 @Override
@@ -291,15 +299,13 @@ public String readableName() {
 }
 @Override
 public JavaElement resolved(Binding binding) {
-	SourceRefElement resolvedHandle = new ResolvedSourceMethod(this.getParent(), this.name, this.parameterTypes, new String(binding.computeUniqueKey()));
-	resolvedHandle.occurrenceCount = this.occurrenceCount;
-	return resolvedHandle;
+	return new ResolvedSourceMethod(this.getParent(), this.name, this.parameterTypes, new String(binding.computeUniqueKey()), this.getOccurrenceCount());
 }
 /**
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	if (info == null) {
 		toStringName(buffer);
@@ -320,10 +326,10 @@ protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean s
 	}
 }
 @Override
-protected void toStringName(StringBuffer buffer) {
+protected void toStringName(StringBuilder buffer) {
 	toStringName(buffer, 0);
 }
-protected void toStringName(StringBuffer buffer, int flags) {
+protected void toStringName(StringBuilder buffer, int flags) {
 	buffer.append(getElementName());
 	buffer.append('(');
 	String[] parameters = getParameterTypes();
@@ -351,9 +357,9 @@ protected void toStringName(StringBuffer buffer, int flags) {
 		}
 	}
 	buffer.append(')');
-	if (this.occurrenceCount > 1) {
+	if (this.getOccurrenceCount() > 1) {
 		buffer.append("#"); //$NON-NLS-1$
-		buffer.append(this.occurrenceCount);
+		buffer.append(this.getOccurrenceCount());
 	}
 }
 }

@@ -19,7 +19,6 @@ package org.eclipse.jdt.internal.compiler.lookup;
 
 import java.util.ArrayList;
 import java.util.function.Predicate;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.env.IModuleAwareNameEnvironment;
 import org.eclipse.jdt.internal.compiler.util.HashtableOfPackage;
@@ -59,7 +58,7 @@ public PackageBinding(char[][] compoundName, PackageBinding parent, LookupEnviro
 	this.parent = parent;
 	this.environment = environment;
 	this.knownTypes = null; // initialized if used... class counts can be very large 300-600
-	this.knownPackages = new HashtableOfPackage<PackageBinding>(3); // sub-package counts are typically 0-3
+	this.knownPackages = new HashtableOfPackage<>(3); // sub-package counts are typically 0-3
 
 	if (compoundName != CharOperation.NO_CHAR_CHAR)
 		checkIfNullAnnotationPackage();
@@ -103,9 +102,9 @@ void addType(ReferenceBinding element) {
 	if (priorType != null && priorType.isUnresolvedType() && !element.isUnresolvedType()) {
 		((UnresolvedReferenceBinding) priorType).setResolvedType(element, this.environment);
 	}
-	if (this.environment.globalOptions.isAnnotationBasedNullAnalysisEnabled)
+	if (this.environment.globalOptions.isAnnotationBasedNullAnalysisEnabled || this.environment.globalOptions.isAnnotationBasedResourceAnalysisEnabled)
 		if (element.isAnnotationType() || element instanceof UnresolvedReferenceBinding) // unresolved types don't yet have the modifiers set
-			checkIfNullAnnotationType(element);
+			checkIfAnalysisAnnotationType(element);
 
 	if (!element.isUnresolvedType() && this.wrappingSplitPackageBindings != null) {
 		for (SplitPackageBinding splitPackageBinding : this.wrappingSplitPackageBindings) {
@@ -394,7 +393,7 @@ private boolean isPackageOfQualifiedTypeName(char[][] packageName, char[][] type
 	return true;
 }
 
-void checkIfNullAnnotationType(ReferenceBinding type) {
+void checkIfAnalysisAnnotationType(ReferenceBinding type) {
 	// check if type is one of the configured null annotation types
 	// if so mark as a well known type using the corresponding typeBit:
 	if (this.environment.nullableAnnotationPackage == this
@@ -413,7 +412,7 @@ void checkIfNullAnnotationType(ReferenceBinding type) {
 		if (!(type instanceof UnresolvedReferenceBinding)) // unresolved will need to check back for the resolved type
 			this.environment.nonnullByDefaultAnnotationPackage = null; // don't check again
 	} else {
-		type.typeBits |= this.environment.getNullAnnotationBit(type.compoundName);
+		type.typeBits |= this.environment.getAnalysisAnnotationBit(type.compoundName);
 	}
 }
 

@@ -18,13 +18,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.AnnotationValueVisitor;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
-
 import org.eclipse.jdt.internal.compiler.apt.dispatch.BaseProcessingEnvImpl;
 import org.eclipse.jdt.internal.compiler.impl.Constant;
 import org.eclipse.jdt.internal.compiler.impl.DoubleConstant;
@@ -266,7 +264,7 @@ public class AnnotationValueImpl implements AnnotationValue, TypeIds {
 			return "null"; //$NON-NLS-1$
 		} else if (this._value instanceof String) {
 			String value = (String) this._value;
-			StringBuffer sb = new StringBuffer();
+			StringBuilder sb = new StringBuilder();
 			sb.append('"');
 			for (int i = 0; i < value.length(); i++) {
 				Util.appendEscapedChar(sb, value.charAt(i), true);
@@ -274,7 +272,7 @@ public class AnnotationValueImpl implements AnnotationValue, TypeIds {
 			sb.append('"');
 			return sb.toString();
 		} else if (this._value instanceof Character) {
-			StringBuffer sb = new StringBuffer();
+			StringBuilder sb = new StringBuilder();
 			sb.append('\'');
 			Util.appendEscapedChar(sb, ((Character) this._value).charValue(), false);
 			sb.append('\'');

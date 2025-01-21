@@ -19,15 +19,13 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticListener;
 import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import javax.tools.JavaCompiler.CompilationTask;
-
 import org.eclipse.jdt.core.tests.compiler.regression.BatchCompilerTest;
 import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
 
@@ -49,7 +47,7 @@ public class AbstractCompilerToolTest extends BatchCompilerTest {
 		}
 		@Override
 		public String toString() {
-			StringBuffer result = new StringBuffer();
+			StringBuilder result = new StringBuilder();
 			for (String option: this.options) {
 				result.append(option);
 				result.append(' ');
@@ -105,7 +103,7 @@ public class AbstractCompilerToolTest extends BatchCompilerTest {
 			ownsManager = true;
 		}
 		try {
-			List<File> files = new ArrayList<File>();
+			List<File> files = new ArrayList<>();
 			String[] fileNames = arguments.fileNames;
 			for (int i = 0, l = fileNames.length; i < l; i++) {
 				if (fileNames[i].startsWith(OUTPUT_DIR)) {

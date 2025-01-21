@@ -23,26 +23,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.AnnotatedConstruct;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.ModuleElement;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.RecordComponentElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.TypeParameterElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.util.ElementScanner14;
-
 import org.eclipse.jdt.compiler.apt.tests.processors.base.BaseProcessor;
 
 @SupportedAnnotationTypes("*")
@@ -125,7 +114,7 @@ abstract class BaseElementProcessor extends BaseProcessor {
 		throw new AssertionFailedError(msg + " (Binary mode= " + isBinaryMode + ")");
 	}
 	protected String getExceptionStackTrace(Throwable t) {
-		StringBuffer buf = new StringBuffer(t.getMessage());
+		StringBuilder buf = new StringBuilder(t.getMessage());
 		StackTraceElement[] traces = t.getStackTrace();
 		for (int i = 0; i < traces.length; i++) {
 			StackTraceElement trace = traces[i];
@@ -154,7 +143,7 @@ abstract class BaseElementProcessor extends BaseProcessor {
 	}
 	public void assertModifiers(Set<Modifier> modifiers, String[] expected) {
 		assertEquals("Incorrect no of modifiers", modifiers.size(), expected.length);
-		Set<String> actual = new HashSet<String>(expected.length);
+		Set<String> actual = new HashSet<>(expected.length);
 		for (Modifier modifier : modifiers) {
 			actual.add(modifier.toString());
 		}
@@ -217,7 +206,7 @@ abstract class BaseElementProcessor extends BaseProcessor {
 
 	public void assertEquals(String msg, int expected, int actual) {
 		if (expected != actual) {
-			StringBuffer buf = new StringBuffer();
+			StringBuilder buf = new StringBuilder();
 			buf.append(msg);
 			buf.append(", expected " + expected + " but was " + actual);
 			reportError(buf.toString());
@@ -235,7 +224,7 @@ abstract class BaseElementProcessor extends BaseProcessor {
 	protected String getAnnotationString(AnnotationMirror annot) {
 		DeclaredType annotType = annot.getAnnotationType();
 		TypeElement type = (TypeElement) annotType.asElement();
-		StringBuffer buf = new StringBuffer("@" + type.getSimpleName());
+		StringBuilder buf = new StringBuilder("@" + type.getSimpleName());
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annot.getElementValues();
 		Set<? extends ExecutableElement> keys = values.keySet();
 		buf.append('(');

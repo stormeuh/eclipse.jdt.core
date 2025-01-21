@@ -33,9 +33,13 @@ package org.eclipse.jdt.internal.codeassist.complete;
  * The source range of the completion node denotes the source range
  * which should be replaced by the completion.
  */
-
-import org.eclipse.jdt.internal.compiler.ast.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.ast.SingleNameReference;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemBinding;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemReasons;
+import org.eclipse.jdt.internal.compiler.lookup.ProblemReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 public class CompletionOnSingleNameReference extends SingleNameReference implements CompletionNode {
 
@@ -56,7 +60,7 @@ public class CompletionOnSingleNameReference extends SingleNameReference impleme
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 
 		output.append("<CompleteOnName:"); //$NON-NLS-1$
 		return super.printExpression(0, output).append('>');

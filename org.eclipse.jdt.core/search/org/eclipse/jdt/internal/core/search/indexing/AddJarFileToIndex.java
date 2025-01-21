@@ -24,7 +24,6 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipError;
 import java.util.zip.ZipFile;
-
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -47,7 +46,6 @@ import org.eclipse.jdt.internal.core.index.IndexLocation;
 import org.eclipse.jdt.internal.core.search.JavaSearchDocument;
 import org.eclipse.jdt.internal.core.search.processing.JobManager;
 
-@SuppressWarnings("rawtypes")
 class AddJarFileToIndex extends BinaryContainer {
 
 	private static final char JAR_SEPARATOR = IJavaSearchScope.JAR_FILE_ENTRY_SEPARATOR.charAt(0);
@@ -125,6 +123,7 @@ class AddJarFileToIndex extends BinaryContainer {
 				return true; // index got deleted since acquired
 			}
 			index.separator = JAR_SEPARATOR;
+			@SuppressWarnings("resource")
 			ZipFile zip = null;
 			try {
 				// this path will be a relative path to the workspace in case the zipfile in the workspace otherwise it will be a path in the
@@ -161,7 +160,6 @@ class AddJarFileToIndex extends BinaryContainer {
 					// external file -> it is ok to use toFile()
 					zip = new ZipFile(this.containerPath.toFile());
 					zipFilePath = (Path) this.containerPath;
-					// path is already canonical since coming from a library classpath entry
 				}
 
 				if (this.isCancelled) {
@@ -187,9 +185,9 @@ class AddJarFileToIndex extends BinaryContainer {
 					SimpleLookupTable indexedFileNames = new SimpleLookupTable(max == 0 ? 33 : max + 11);
 					for (int i = 0; i < max; i++)
 						indexedFileNames.put(paths[i], DELETED);
-					for (Enumeration e = zip.entries(); e.hasMoreElements();) {
+					for (Enumeration<? extends ZipEntry> e = zip.entries(); e.hasMoreElements();) {
 						// iterate each entry to index it
-						ZipEntry ze = (ZipEntry) e.nextElement();
+						ZipEntry ze = e.nextElement();
 						String zipEntryName = ze.getName();
 						if (Util.isClassFileName(zipEntryName) && isValidPackageNameForClassOrisModule(zipEntryName))
 								// the class file may not be there if the package name is not valid
@@ -198,8 +196,8 @@ class AddJarFileToIndex extends BinaryContainer {
 					boolean needToReindex = indexedFileNames.elementSize != max; // a new file was added
 					if (!needToReindex) {
 						Object[] valueTable = indexedFileNames.valueTable;
-						for (int i = 0, l = valueTable.length; i < l; i++) {
-							if (valueTable[i] == DELETED) {
+						for (Object v : valueTable) {
+							if (v == DELETED) {
 								needToReindex = true; // a file was deleted so re-index
 								break;
 							}
@@ -227,10 +225,10 @@ class AddJarFileToIndex extends BinaryContainer {
 				IPath indexPath = null;
 				IndexLocation indexLocation;
 				if ((indexLocation = index.getIndexLocation()) != null) {
-					indexPath = new Path(indexLocation.getCanonicalFilePath());
+					indexPath = indexLocation.getIndexPath();
 				}
 				boolean hasModuleInfoClass = false;
-				for (Enumeration e = zip.entries(); e.hasMoreElements();) {
+				for (Enumeration<? extends ZipEntry> e = zip.entries(); e.hasMoreElements();) {
 					if (this.isCancelled) {
 						if (JobManager.VERBOSE)
 							trace("-> indexing of " + zip.getName() + " has been cancelled"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -238,7 +236,7 @@ class AddJarFileToIndex extends BinaryContainer {
 					}
 
 					// iterate each entry to index it
-					ZipEntry ze = (ZipEntry) e.nextElement();
+					ZipEntry ze = e.nextElement();
 					String zipEntryName = ze.getName();
 					if (Util.isClassFileName(zipEntryName) &&
 							isValidPackageNameForClassOrisModule(zipEntryName)) {

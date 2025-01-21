@@ -30,6 +30,11 @@ public class ResolvedBinaryField extends BinaryField {
 		this.uniqueKey = uniqueKey;
 	}
 
+	public ResolvedBinaryField(JavaElement parent, String name, String uniqueKey, int occurrenceCount) {
+		super(parent, name, occurrenceCount);
+		this.uniqueKey = uniqueKey;
+	}
+
 	@Override
 	public String getKey() {
 		return this.uniqueKey;
@@ -46,10 +51,10 @@ public class ResolvedBinaryField extends BinaryField {
 	}
 
 	/**
-	 * @private Debugging purposes
+	 * for debugging only
 	 */
 	@Override
-	protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+	protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 		super.toStringInfo(tab, buffer, info, showResolvedInfo);
 		if (showResolvedInfo) {
 			buffer.append(" {key="); //$NON-NLS-1$
@@ -59,9 +64,7 @@ public class ResolvedBinaryField extends BinaryField {
 	}
 
 	@Override
-	public JavaElement unresolved() {
-		SourceRefElement handle = new BinaryField(this.getParent(), this.name);
-		handle.occurrenceCount = this.occurrenceCount;
-		return handle;
+	public BinaryField unresolved() {
+		return new BinaryField(this.getParent(), this.name, this.getOccurrenceCount());
 	}
 }

@@ -13,15 +13,14 @@
  *******************************************************************************/
 package org.eclipse.jdt.apt.tests.external.annotations.batch;
 
-import java.util.Collection;
-import java.util.HashSet;
-
 import com.sun.mirror.apt.AnnotationProcessor;
 import com.sun.mirror.apt.AnnotationProcessorEnvironment;
 import com.sun.mirror.apt.Messager;
 import com.sun.mirror.declaration.AnnotationTypeDeclaration;
 import com.sun.mirror.declaration.Declaration;
 import com.sun.mirror.declaration.TypeDeclaration;
+import java.util.Collection;
+import java.util.HashSet;
 
 public class BatchProcessor implements AnnotationProcessor {
 
@@ -38,7 +37,7 @@ public class BatchProcessor implements AnnotationProcessor {
 		final Messager msger = _env.getMessager();
 		if( TIMES_CALLED == 0 ){
 
-			final Collection<String> expectedList = new HashSet<String>();
+			final Collection<String> expectedList = new HashSet<>();
 			expectedList.add("p1.A");
 			expectedList.add("p1.B");
 			expectedList.add("p1.C");
@@ -52,7 +51,7 @@ public class BatchProcessor implements AnnotationProcessor {
 				msger.printError("failed to find type " + expectedList);
 			}
 
-			final Collection<String> expectedAnnotated = new HashSet<String>();
+			final Collection<String> expectedAnnotated = new HashSet<>();
 			expectedList.add("p1.A");
 			expectedList.add("p1.C");
 			final AnnotationTypeDeclaration batchAnnoDecl =

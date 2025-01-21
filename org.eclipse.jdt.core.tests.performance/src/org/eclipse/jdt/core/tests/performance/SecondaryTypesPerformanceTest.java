@@ -23,7 +23,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-
+import junit.framework.Test;
+import junit.framework.TestSuite;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
@@ -31,9 +32,6 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.tests.util.Util;
 import org.eclipse.test.performance.PerformanceTestCase;
-
-import junit.framework.Test;
-import junit.framework.TestSuite;
 
 public class SecondaryTypesPerformanceTest extends PerformanceTestCase {
 
@@ -163,11 +161,9 @@ public class SecondaryTypesPerformanceTest extends PerformanceTestCase {
 	}
 
 	private void writeFile(File aFile, String aSource) throws IOException {
-		FileWriter fileWriter = new FileWriter(aFile);
-		try {
+
+		try (FileWriter fileWriter = new FileWriter(aFile)) {
 			fileWriter.write(aSource);
-		} finally {
-			fileWriter.close();
 		}
 	}
 }

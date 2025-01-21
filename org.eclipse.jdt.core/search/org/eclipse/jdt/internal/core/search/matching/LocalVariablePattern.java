@@ -17,8 +17,12 @@ package org.eclipse.jdt.internal.core.search.matching;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
-import org.eclipse.jdt.core.*;
-import org.eclipse.jdt.core.search.*;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IModuleDescription;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.search.IJavaSearchScope;
+import org.eclipse.jdt.core.search.SearchParticipant;
 import org.eclipse.jdt.internal.compiler.env.AccessRuleSet;
 import org.eclipse.jdt.internal.compiler.util.SuffixConstants;
 import org.eclipse.jdt.internal.core.LocalVariable;
@@ -78,7 +82,7 @@ public void findIndexMatches(Index index, IndexQueryRequestor requestor, SearchP
 }
 
 @Override
-protected StringBuffer print(StringBuffer output) {
+protected StringBuilder print(StringBuilder output) {
 	if (this.findDeclarations) {
 		output.append(this.findReferences
 			? "LocalVarCombinedPattern: " //$NON-NLS-1$

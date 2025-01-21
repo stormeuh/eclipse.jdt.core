@@ -21,7 +21,6 @@ import java.net.URL;
 import java.util.Objects;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
@@ -69,10 +68,11 @@ public class JarIndexLocation extends IndexLocation {
 			if (this.jarFile == null) {
 				JarURLConnection connection = (JarURLConnection) this.localUrl.openConnection();
 				connection.setUseCaches(false);
-				JarFile file = connection.getJarFile();
-				if (file == null)
-					return false;
-				file.close();
+				try (JarFile file = connection.getJarFile()) {
+					if (file == null) {
+						return false;
+					}
+				}
 			}
 		} catch (IOException e) {
 			return false;
@@ -104,7 +104,7 @@ public class JarIndexLocation extends IndexLocation {
 	}
 
 	@Override
-	public String getCanonicalFilePath() {
+	public Path getIndexPath() {
 		return null;
 	}
 

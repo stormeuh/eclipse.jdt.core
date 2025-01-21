@@ -14,7 +14,6 @@
 package org.eclipse.jdt.internal.core;
 
 import java.io.File;
-
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IJavaElement;
@@ -69,12 +68,17 @@ public class ExternalPackageFragmentRoot extends PackageFragmentRoot {
 	public boolean equals(Object o) {
 		if (this == o)
 			return true;
-		if (o instanceof ExternalPackageFragmentRoot) {
-			ExternalPackageFragmentRoot other= (ExternalPackageFragmentRoot) o;
+		if (o instanceof ExternalPackageFragmentRoot other) {
 			return this.externalPath.equals(other.externalPath);
 		}
 		return false;
 	}
+
+	@Override
+	protected int calculateHashCode() {
+		return this.externalPath.hashCode();
+	}
+
 	@Override
 	public String getElementName() {
 		return this.externalPath.lastSegment();
@@ -105,10 +109,6 @@ public class ExternalPackageFragmentRoot extends PackageFragmentRoot {
 	public IResource getUnderlyingResource() throws JavaModelException {
 		return null;
 	}
-	@Override
-	public int hashCode() {
-		return this.externalPath.hashCode();
-	}
 	/**
 	 * @see IPackageFragmentRoot
 	 */
@@ -138,7 +138,7 @@ public class ExternalPackageFragmentRoot extends PackageFragmentRoot {
 	}
 
 	@Override
-	protected void toStringAncestors(StringBuffer buffer) {
+	protected void toStringAncestors(StringBuilder buffer) {
 		// don't show project as it is irrelevant for external folders.
 	}
 }

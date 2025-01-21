@@ -15,17 +15,7 @@
 package org.eclipse.jdt.internal.codeassist;
 
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.jdt.core.CompletionContext;
-import org.eclipse.jdt.core.CompletionFlags;
-import org.eclipse.jdt.core.CompletionProposal;
-import org.eclipse.jdt.core.Flags;
-import org.eclipse.jdt.core.IAccessRule;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IMethod;
-import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.Signature;
+import org.eclipse.jdt.core.*;
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.env.IBinaryMethod;
 import org.eclipse.jdt.internal.compiler.env.IBinaryType;
@@ -260,7 +250,7 @@ public class InternalCompletionProposal extends CompletionProposal {
 							// map source and try to find parameter names
 							if(paramNames == null) {
 								if (!packageFragmentRoot.isArchive()) this.completionEngine.openedBinaryTypes++;
-								IBinaryType info = (IBinaryType) ((BinaryType) type).getElementInfo();
+								IBinaryType info = ((BinaryType) type).getElementInfo();
 								char[] source = mapper.findSource(type, info);
 								if (source != null){
 									mapper.mapSource((NamedMember) type, source, info);
@@ -593,7 +583,7 @@ public class InternalCompletionProposal extends CompletionProposal {
 	@Override
 	public void setRelevance(int rating) {
 		if (rating <= 0) {
-			throw new IllegalArgumentException();
+			throw new IllegalArgumentException("rating <=0: " + rating); //$NON-NLS-1$
 		}
 		this.relevance = rating;
 	}
@@ -655,7 +645,6 @@ public class InternalCompletionProposal extends CompletionProposal {
 	 * of the method or constructor being proposed</li>
 	 * </ul>
 	 * For other kinds of completion proposals, this method returns <code>null</code>.
-	 * </p>
 	 *
 	 * @return the binding corresponding to this proposal (if available), or <code>null</code> if none
 	 */

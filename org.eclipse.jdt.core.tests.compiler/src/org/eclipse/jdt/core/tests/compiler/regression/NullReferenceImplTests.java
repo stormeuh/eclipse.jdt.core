@@ -25,22 +25,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
+import java.util.*;
 import junit.framework.AssertionFailedError;
 import junit.framework.Test;
 import junit.framework.TestSuite;
-
 import org.eclipse.jdt.core.tests.compiler.regression.NullReferenceImplTests.State;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.flow.UnconditionalFlowInfo;
@@ -1288,6 +1276,8 @@ static void copy(UnconditionalFlowInfo source, UnconditionalFlowInfo target) {
 	}
 	target.iNBit = source.iNBit;
 	target.iNNBit = source.iNNBit;
+	target.iDefNBit = source.iDefNBit;
+	target.iDefNNBit = source.iDefNNBit;
 	target.tagBits = source.tagBits;
 	target.maxFieldCount = source.maxFieldCount;
 	if (source.extra != null) {
@@ -1351,6 +1341,8 @@ static void init(UnconditionalFlowInfo zis, long [] nullBits, int position) {
 	}
 	zis.iNBit = -1L; // FIXME: nullBits[4] << position;
 	zis.iNNBit = -1L; // FIXME: nullBits[5] << position;
+	zis.iDefNBit = -1L; // FIXME: nullBits[4] << position;
+	zis.iDefNNBit = -1L; // FIXME: nullBits[5] << position;
 	if (nullBits[0] != 0 || nullBits[1] != 0
 	        || nullBits[2] != 0 || nullBits[3] != 0
 	        || nullBits[4] != 0 || nullBits[5] != 0) {

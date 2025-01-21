@@ -28,29 +28,17 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.Name;
-import javax.lang.model.element.NestingKind;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
-
 import org.eclipse.jdt.compiler.apt.tests.annotations.TypedAnnos;
 import org.eclipse.jdt.compiler.apt.tests.processors.base.BaseProcessor;
 
@@ -221,7 +209,7 @@ public class ElementProc extends BaseProcessor {
 		TypeElement elementOrdered = _elementUtils.getTypeElement(className);
 		List<? extends Element> enclosedElements = elementOrdered.getEnclosedElements();
 
-		List<String> elementNames = new ArrayList<String>(enclosedElements.size());
+		List<String> elementNames = new ArrayList<>(enclosedElements.size());
 		for (Element e : enclosedElements) {
 			if (!ignoredKinds.contains(e.getKind())) {
 				elementNames.add(e.getSimpleName().toString());
@@ -397,7 +385,7 @@ public class ElementProc extends BaseProcessor {
 	 * @return true if all tests passed
 	 */
 	private boolean examineABModifiers() {
-		Map<String, Element> contents = new HashMap<String, Element>();
+		Map<String, Element> contents = new HashMap<>();
 		for (Element enclosed : _elementAB.getEnclosedElements()) {
 			contents.put(enclosed.getSimpleName().toString(), enclosed);
 		}
@@ -672,7 +660,7 @@ public class ElementProc extends BaseProcessor {
 			reportError("Type DEnum is not NestingKind.MEMBER");
 			return false;
 		}
-		Map<String, VariableElement> values = new LinkedHashMap<String, VariableElement>();
+		Map<String, VariableElement> values = new LinkedHashMap<>();
 		for (VariableElement enclosedElement : ElementFilter.fieldsIn(_elementDEnum.getEnclosedElements())) {
 			values.put(enclosedElement.getSimpleName().toString(), enclosedElement);
 		}

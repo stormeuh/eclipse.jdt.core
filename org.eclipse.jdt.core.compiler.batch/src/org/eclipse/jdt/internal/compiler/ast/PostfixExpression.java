@@ -14,8 +14,8 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 
 public class PostfixExpression extends CompoundAssignment {
 
@@ -61,7 +61,7 @@ public String operatorToString() {
 }
 
 @Override
-public StringBuffer printExpressionNoParenthesis(int indent, StringBuffer output) {
+public StringBuilder printExpressionNoParenthesis(int indent, StringBuilder output) {
 	return this.lhs.printExpression(indent, output).append(' ').append(operatorToString());
 }
 

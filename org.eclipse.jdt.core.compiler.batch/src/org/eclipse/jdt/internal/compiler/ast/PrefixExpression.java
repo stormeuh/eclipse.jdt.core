@@ -14,7 +14,7 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
 
 public class PrefixExpression extends CompoundAssignment {
 
@@ -45,7 +45,7 @@ public String operatorToString() {
 }
 
 @Override
-public StringBuffer printExpressionNoParenthesis(int indent, StringBuffer output) {
+public StringBuilder printExpressionNoParenthesis(int indent, StringBuilder output) {
 
 	output.append(operatorToString()).append(' ');
 	return this.lhs.printExpression(0, output);

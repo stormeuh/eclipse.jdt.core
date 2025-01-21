@@ -34,8 +34,7 @@ package org.eclipse.jdt.internal.codeassist.complete;
  * The arguments of the allocation expression are all the arguments defined
  * before the cursor.
  */
-
-import org.eclipse.jdt.internal.compiler.ast.*;
+import org.eclipse.jdt.internal.compiler.ast.ImportReference;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 
 public class CompletionOnPackageReference extends ImportReference implements CompletionNode {
@@ -43,7 +42,7 @@ public CompletionOnPackageReference(char[][] tokens , long[] positions) {
 	super(tokens, positions, false, ClassFileConstants.AccDefault);
 }
 @Override
-public StringBuffer print(int indent, StringBuffer output, boolean withOnDemand) {
+public StringBuilder print(int indent, StringBuilder output, boolean withOnDemand) {
 
 	printIndent(indent, output).append("<CompleteOnPackage:"); //$NON-NLS-1$
 	for (int i = 0; i < this.tokens.length; i++) {

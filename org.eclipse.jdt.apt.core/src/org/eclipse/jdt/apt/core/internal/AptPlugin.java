@@ -19,7 +19,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
-
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
@@ -195,7 +194,7 @@ public class AptPlugin extends Plugin implements DebugOptionsListener {
 
 	public static void trace(final String msg){
 		if (DEBUG) {
-			StringBuffer sb = new StringBuffer();
+			StringBuilder sb = new StringBuilder();
 			sb.append('[');
 			// SimpleDateFormat is not thread-safe, according to javadoc
 			synchronized(TRACE_DATE_FORMAT) {

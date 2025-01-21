@@ -14,7 +14,11 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.ClassScope;
+import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
+import org.eclipse.jdt.internal.compiler.lookup.MethodScope;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
 
 
 public class JavadocReturnStatement extends ReturnStatement {
@@ -42,7 +46,7 @@ public class JavadocReturnStatement extends ReturnStatement {
 	}
 
 	@Override
-	public StringBuffer printStatement(int tab, StringBuffer output) {
+	public StringBuilder printStatement(int tab, StringBuilder output) {
 		printIndent(tab, output).append("return"); //$NON-NLS-1$
 		if ((this.bits & ASTNode.Empty) == 0)
 			output.append(' ').append(" <not empty>"); //$NON-NLS-1$

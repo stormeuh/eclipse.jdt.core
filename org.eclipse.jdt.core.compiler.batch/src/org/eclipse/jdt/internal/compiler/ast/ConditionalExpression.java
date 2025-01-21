@@ -31,15 +31,27 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.ast;
 
-import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.*;
+import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.ASSIGNMENT_CONTEXT;
+import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.INVOCATION_CONTEXT;
+import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.VANILLA_CONTEXT;
 
-import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.impl.*;
-import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.codegen.BranchLabel;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.flow.UnconditionalFlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
+import org.eclipse.jdt.internal.compiler.lookup.BaseTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.Binding;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment;
+import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
+import org.eclipse.jdt.internal.compiler.lookup.PolyTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.Scope;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
 
 public class ConditionalExpression extends OperatorExpression implements IPolyExpression {
 
@@ -62,7 +74,6 @@ public class ConditionalExpression extends OperatorExpression implements IPolyEx
 	private boolean isPolyExpression = false;
 	private TypeBinding originalValueIfTrueType;
 	private TypeBinding originalValueIfFalseType;
-	private boolean use18specifics;
 
 	public ConditionalExpression(Expression condition, Expression valueIfTrue, Expression valueIfFalse) {
 		this.condition = condition;
@@ -301,18 +312,6 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 				int position = codeStream.position;
 				codeStream.goto_(endifLabel);
 				codeStream.recordPositionsFrom(position, this.valueIfTrue.sourceEnd);
-				// Tune codestream stack size
-				if (valueRequired) {
-					switch(this.resolvedType.id) {
-						case TypeIds.T_long :
-						case TypeIds.T_double :
-							codeStream.decrStackSize(2);
-							break;
-						default :
-							codeStream.decrStackSize(1);
-							break;
-					}
-				}
 			}
 		}
 		if (needFalsePart) {
@@ -326,12 +325,17 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 				falseLabel.place();
 			}
 			this.valueIfFalse.generateCode(currentScope, codeStream, valueRequired);
-			if (valueRequired) {
-				codeStream.recordExpressionType(this.resolvedType);
-			}
 			if (needTruePart) {
 				// End of if statement
 				endifLabel.place();
+			}
+			if (valueRequired) {
+				if (this.valueIfFalse.resolvedType == TypeBinding.NULL) {
+					if (!this.resolvedType.isBaseType()) {
+						codeStream.operandStack.pop(TypeBinding.NULL);
+						codeStream.operandStack.push(this.resolvedType);
+					}
+				}
 			}
 		}
 		// May loose some local variable initializations : affecting the local variable attributes
@@ -456,7 +460,7 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 	}
 
 	@Override
-	public StringBuffer printExpressionNoParenthesis(int indent, StringBuffer output) {
+	public StringBuilder printExpressionNoParenthesis(int indent, StringBuilder output) {
 
 		this.condition.printExpression(indent, output).append(" ? "); //$NON-NLS-1$
 		this.valueIfTrue.printExpression(0, output).append(" : "); //$NON-NLS-1$
@@ -464,90 +468,15 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 	}
 
 	@Override
-	public void addPatternVariables(BlockScope scope, CodeStream codeStream) {
-		this.condition.addPatternVariables(scope, codeStream);
-		this.valueIfTrue.addPatternVariables(scope, codeStream);
-		this.valueIfFalse.addPatternVariables(scope, codeStream);
-	}
-	@Override
-	public void collectPatternVariablesToScope(LocalVariableBinding[] variables, BlockScope scope) {
-		// Introduce preceding variables introduced into the scope if this expression is actually evaluated
-		this.condition.collectPatternVariablesToScope(variables, scope);
-		this.valueIfFalse.collectPatternVariablesToScope(variables, scope);
-		this.valueIfTrue.collectPatternVariablesToScope(variables, scope);
-		if (this.valueIfFalse.containsPatternVariable() && this.valueIfTrue.containsPatternVariable() ) {
-			LocalVariableBinding[] first = this.valueIfTrue.patternVarsWhenTrue;
-			LocalVariableBinding[] second = this.valueIfFalse.patternVarsWhenTrue;
-			if (first != null && second != null) {
-				for (LocalVariableBinding localVariableBinding : first) {
-					char[] name = localVariableBinding.name;
-					for (LocalVariableBinding localVariableBinding2 : second) {
-						if (CharOperation.equals(name, localVariableBinding2.name)) {
-							scope.problemReporter().illegalRedeclarationOfPatternVar(localVariableBinding2, localVariableBinding2.declaration);
-						}
-					}
-				}
-			}
-			first = this.valueIfTrue.patternVarsWhenFalse;
-			second = this.valueIfFalse.patternVarsWhenFalse;
-			if (first != null && second != null) {
-				for (LocalVariableBinding localVariableBinding : first) {
-					char[] name = localVariableBinding.name;
-					for (LocalVariableBinding localVariableBinding2 : second) {
-						if (CharOperation.equals(name, localVariableBinding2.name)) {
-							scope.problemReporter().illegalRedeclarationOfPatternVar(localVariableBinding2, localVariableBinding2.declaration);
-						}
-					}
-				}
-			}
-		}
-
-		if (!this.condition.containsPatternVariable()) {
-			return;
-		}
-		if (this.condition.getPatternVariable() != null) {
-			char[] name = this.condition.getPatternVariable().name;
-			LocalDeclaration localVar = this.valueIfTrue.getPatternVariable();
-			if (localVar != null && CharOperation.equals(name, localVar.name)) {
-					scope.problemReporter().illegalRedeclarationOfPatternVar(localVar.binding, localVar);
-					return;
-			}
-			localVar = this.valueIfFalse.getPatternVariable();
-			if (localVar != null && CharOperation.equals(name, localVar.name)) {
-				scope.problemReporter().illegalRedeclarationOfPatternVar(localVar.binding, localVar);
-				return;
-			}
-		}
-		this.condition.collectPatternVariablesToScope(this.patternVarsWhenTrue, scope);
-
-		variables = this.condition.getPatternVariablesWhenTrue();
-		this.valueIfTrue.addPatternVariablesWhenTrue(variables);
-		this.valueIfFalse.addPatternVariablesWhenFalse(variables);
-		this.valueIfTrue.collectPatternVariablesToScope(variables, scope);
-
-		variables = this.condition.getPatternVariablesWhenFalse();
-		this.valueIfTrue.addPatternVariablesWhenFalse(variables);
-		this.valueIfFalse.addPatternVariablesWhenTrue(variables);
-		this.valueIfFalse.collectPatternVariablesToScope(variables, scope);
-	}
-	@Override
 	public TypeBinding resolveType(BlockScope scope) {
 		// JLS3 15.25
 		LookupEnvironment env = scope.environment();
-		final long sourceLevel = scope.compilerOptions().sourceLevel;
-		boolean use15specifics = sourceLevel >= ClassFileConstants.JDK1_5;
-		this.use18specifics = sourceLevel >= ClassFileConstants.JDK1_8;
-
-		if (this.use18specifics) {
-			if (this.expressionContext == ASSIGNMENT_CONTEXT || this.expressionContext == INVOCATION_CONTEXT) {
-				this.valueIfTrue.setExpressionContext(this.expressionContext);
-				this.valueIfTrue.setExpectedType(this.expectedType);
-				this.valueIfFalse.setExpressionContext(this.expressionContext);
-				this.valueIfFalse.setExpectedType(this.expectedType);
-			}
+		if (this.expressionContext == ASSIGNMENT_CONTEXT || this.expressionContext == INVOCATION_CONTEXT) {
+			this.valueIfTrue.setExpressionContext(this.expressionContext);
+			this.valueIfTrue.setExpectedType(this.expectedType);
+			this.valueIfFalse.setExpressionContext(this.expressionContext);
+			this.valueIfFalse.setExpectedType(this.expectedType);
 		}
-
-		collectPatternVariablesToScope(null, scope);
 
 		if (this.constant != Constant.NotAConstant) {
 			this.constant = Constant.NotAConstant;
@@ -555,10 +484,35 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 			this.condition.computeConversion(scope, TypeBinding.BOOLEAN, conditionType);
 
 			if (this.valueIfTrue instanceof CastExpression) this.valueIfTrue.bits |= DisableUnnecessaryCastCheck; // will check later on
-			this.originalValueIfTrueType = this.valueIfTrue.resolveType(scope);
-
+			this.originalValueIfTrueType = this.valueIfTrue.resolveTypeWithBindings(this.condition.bindingsWhenTrue(), scope);
 			if (this.valueIfFalse instanceof CastExpression) this.valueIfFalse.bits |= DisableUnnecessaryCastCheck; // will check later on
-			this.originalValueIfFalseType = this.valueIfFalse.resolveType(scope);
+			this.originalValueIfFalseType = this.valueIfFalse.resolveTypeWithBindings(this.condition.bindingsWhenFalse(), scope);
+
+			/*
+			 *
+			 * 6.3.1.4 Conditional Operator a ? b : c
+			 *
+			 * It is a compile-time error if any of the following conditions hold:
+				• A pattern variable is both (i) introduced by a when true and (ii) introduced by
+				c when true.
+				• A pattern variable is both (i) introduced by a when true and (ii) introduced by
+				c when false.
+				• A pattern variable is both (i) introduced by a when false and (ii) introduced by
+				b when true.
+				• A pattern variable is both (i) introduced by a when false and (ii) introduced by
+				b when false.
+				• A pattern variable is both (i) introduced by b when true and (ii) introduced by
+				c when true.
+				• A pattern variable is both (i) introduced by b when false and (ii) introduced by
+				c when false.
+			 */
+			scope.reportClashingDeclarations(this.condition.bindingsWhenTrue(), this.valueIfFalse.bindingsWhenTrue());
+			scope.reportClashingDeclarations(this.condition.bindingsWhenTrue(), this.valueIfFalse.bindingsWhenFalse());
+			scope.reportClashingDeclarations(this.condition.bindingsWhenFalse(), this.valueIfTrue.bindingsWhenTrue());
+			scope.reportClashingDeclarations(this.condition.bindingsWhenFalse(), this.valueIfTrue.bindingsWhenFalse());
+			scope.reportClashingDeclarations(this.valueIfTrue.bindingsWhenTrue(), this.valueIfFalse.bindingsWhenTrue());
+			scope.reportClashingDeclarations(this.valueIfTrue.bindingsWhenFalse(), this.valueIfFalse.bindingsWhenFalse());
+
 
 			if (conditionType == null || this.originalValueIfTrueType == null || this.originalValueIfFalseType == null)
 				return null;
@@ -573,28 +527,17 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 			if (this.originalValueIfFalseType == null || !this.originalValueIfFalseType.isValidBinding())
 				return this.resolvedType = null;
 		}
-		// Propagate the constant value from the valueIfTrue and valueIFFalse expression if it is possible
-		Constant condConstant, trueConstant, falseConstant;
-		if ((condConstant = this.condition.constant) != Constant.NotAConstant
-			&& (trueConstant = this.valueIfTrue.constant) != Constant.NotAConstant
-			&& (falseConstant = this.valueIfFalse.constant) != Constant.NotAConstant) {
-			// all terms are constant expression so we can propagate the constant
-			// from valueIFTrue or valueIfFalse to the receiver constant
-			this.constant = condConstant.booleanValue() ? trueConstant : falseConstant;
-		}
 		if (isPolyExpression()) {
 			if (this.expectedType == null || !this.expectedType.isProperType(true)) {
-				// We will be back here in case of a PolyTypeBinding. So, to enable
-				// further processing, set it back to default.
-				this.constant = Constant.NotAConstant;
 				return new PolyTypeBinding(this);
 			}
+			constantFold();
 			return this.resolvedType = computeConversions(scope, this.expectedType) ? this.expectedType : null;
 		}
 
 		TypeBinding valueIfTrueType = this.originalValueIfTrueType;
 		TypeBinding valueIfFalseType = this.originalValueIfFalseType;
-		if (use15specifics && TypeBinding.notEquals(valueIfTrueType, valueIfFalseType)) {
+		if (TypeBinding.notEquals(valueIfTrueType, valueIfFalseType)) {
 			if (valueIfTrueType.isBaseType()) {
 				if (valueIfFalseType.isBaseType()) {
 					// bool ? baseType : baseType
@@ -630,6 +573,8 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 					}
 			}
 		}
+		constantFold();
+		Constant condConstant;
 		if (TypeBinding.equalsEquals(valueIfTrueType, valueIfFalseType)) { // harmed the implicit conversion
 			this.valueIfTrue.computeConversion(scope, valueIfTrueType, this.originalValueIfTrueType);
 			this.valueIfFalse.computeConversion(scope, valueIfFalseType, this.originalValueIfFalseType);
@@ -705,53 +650,44 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 		}
 		// Type references (null null is already tested)
 		if (valueIfTrueType.isBaseType() && valueIfTrueType != TypeBinding.NULL) {
-			if (use15specifics) {
-				valueIfTrueType = env.computeBoxingType(valueIfTrueType);
-			} else {
-				scope.problemReporter().conditionalArgumentsIncompatibleTypes(this, valueIfTrueType, valueIfFalseType);
-				return null;
-			}
+			valueIfTrueType = env.computeBoxingType(valueIfTrueType);
 		}
 		if (valueIfFalseType.isBaseType() && valueIfFalseType != TypeBinding.NULL) {
-			if (use15specifics) {
-				valueIfFalseType = env.computeBoxingType(valueIfFalseType);
-			} else {
-				scope.problemReporter().conditionalArgumentsIncompatibleTypes(this, valueIfTrueType, valueIfFalseType);
-				return null;
-			}
+			valueIfFalseType = env.computeBoxingType(valueIfFalseType);
 		}
-		if (use15specifics) {
-			// >= 1.5 : LUB(operand types) must exist
-			TypeBinding commonType = null;
-			if (valueIfTrueType == TypeBinding.NULL) {
-				commonType = valueIfFalseType.withoutToplevelNullAnnotation(); // null on other branch invalidates any @NonNull
-			} else if (valueIfFalseType == TypeBinding.NULL) {
-				commonType = valueIfTrueType.withoutToplevelNullAnnotation(); // null on other branch invalidates any @NonNull
-			} else {
-				commonType = scope.lowerUpperBound(new TypeBinding[] { valueIfTrueType, valueIfFalseType });
-			}
-			if (commonType != null) {
-				this.valueIfTrue.computeConversion(scope, commonType, this.originalValueIfTrueType);
-				this.valueIfFalse.computeConversion(scope, commonType, this.originalValueIfFalseType);
-				return this.resolvedType = commonType.capture(scope, this.sourceStart, this.sourceEnd);
-			}
+
+		// >= 1.5 : LUB(operand types) must exist
+		TypeBinding commonType = null;
+		if (valueIfTrueType == TypeBinding.NULL) {
+			commonType = valueIfFalseType.withoutToplevelNullAnnotation(); // null on other branch invalidates any @NonNull
+		} else if (valueIfFalseType == TypeBinding.NULL) {
+			commonType = valueIfTrueType.withoutToplevelNullAnnotation(); // null on other branch invalidates any @NonNull
 		} else {
-			// < 1.5 : one operand must be convertible to the other
-			if (valueIfFalseType.isCompatibleWith(valueIfTrueType)) {
-				this.valueIfTrue.computeConversion(scope, valueIfTrueType, this.originalValueIfTrueType);
-				this.valueIfFalse.computeConversion(scope, valueIfTrueType, this.originalValueIfFalseType);
-				return this.resolvedType = valueIfTrueType;
-			} else if (valueIfTrueType.isCompatibleWith(valueIfFalseType)) {
-				this.valueIfTrue.computeConversion(scope, valueIfFalseType, this.originalValueIfTrueType);
-				this.valueIfFalse.computeConversion(scope, valueIfFalseType, this.originalValueIfFalseType);
-				return this.resolvedType = valueIfFalseType;
-			}
+			commonType = scope.lowerUpperBound(new TypeBinding[] { valueIfTrueType, valueIfFalseType });
 		}
+		if (commonType != null) {
+			this.valueIfTrue.computeConversion(scope, commonType, this.originalValueIfTrueType);
+			this.valueIfFalse.computeConversion(scope, commonType, this.originalValueIfFalseType);
+			return this.resolvedType = commonType.capture(scope, this.sourceStart, this.sourceEnd);
+		}
+
 		scope.problemReporter().conditionalArgumentsIncompatibleTypes(
 			this,
 			valueIfTrueType,
 			valueIfFalseType);
 		return null;
+	}
+
+	private void constantFold() {
+		// Propagate the constant value from the valueIfTrue and valueIFFalse expression if it is possible
+		Constant condConstant, trueConstant, falseConstant;
+		if ((condConstant = this.condition.constant) != Constant.NotAConstant
+			&& (trueConstant = this.valueIfTrue.constant) != Constant.NotAConstant
+			&& (falseConstant = this.valueIfFalse.constant) != Constant.NotAConstant) {
+			// all terms are constant expression so we can propagate the constant
+			// from valueIFTrue or valueIfFalse to the receiver constant
+			this.constant = condConstant.booleanValue() ? trueConstant : falseConstant;
+		}
 	}
 
 	protected boolean computeConversions(BlockScope scope, TypeBinding targetType) {
@@ -853,9 +789,6 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext,
 
 	@Override
 	public boolean isPolyExpression() throws UnsupportedOperationException {
-
-		if (!this.use18specifics)
-			return false;
 
 		if (this.isPolyExpression)
 			return true;

@@ -24,14 +24,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-
 import javax.lang.model.SourceVersion;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticListener;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
-
 import junit.framework.TestCase;
 
 /**
@@ -188,7 +186,7 @@ public class NegativeTests extends TestCase {
 		ByteArrayOutputStream errBuffer = new ByteArrayOutputStream();
 		PrintWriter printWriter = new PrintWriter(errBuffer);
 		TestDiagnosticListener diagnosticListener = new TestDiagnosticListener(printWriter);
-		boolean success = BatchTestUtils.compileTreeWithErrors(compiler, new ArrayList<String>(), targetFolder, diagnosticListener);
+		boolean success = BatchTestUtils.compileTreeWithErrors(compiler, new ArrayList<>(), targetFolder, diagnosticListener);
 
 		assertTrue("Compilation should have failed due to expected errors, but it didn't", !success);
 		assertEquals("Two errors should be reported", 2, diagnosticListener.errorCounter);
@@ -222,7 +220,7 @@ public class NegativeTests extends TestCase {
 		ByteArrayOutputStream errBuffer = new ByteArrayOutputStream();
 		PrintWriter printWriter = new PrintWriter(errBuffer);
 		TestDiagnosticListener diagnosticListener = new TestDiagnosticListener(printWriter);
-		boolean success = BatchTestUtils.compileTreeWithErrors(compiler, new ArrayList<String>(), targetFolder, diagnosticListener);
+		boolean success = BatchTestUtils.compileTreeWithErrors(compiler, new ArrayList<>(), targetFolder, diagnosticListener);
 
 		assertTrue("Compilation should have failed due to expected errors, but it didn't", !success);
 		assertEquals("Two errors should be reported", 2, diagnosticListener.errorCounter);
@@ -243,7 +241,7 @@ public class NegativeTests extends TestCase {
 		BatchTestUtils.copyResources("targets/negative", targetFolder);
 
 		// Turn on the NegativeModelProc - without this, it will just return without doing anything
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-A" + NEGATIVEMODELPROCNAME + "=" + test);
 		if (null != extraOptions)
 			options.addAll(extraOptions);

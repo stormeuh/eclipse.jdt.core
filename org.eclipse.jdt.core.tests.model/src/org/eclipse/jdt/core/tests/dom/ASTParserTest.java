@@ -16,9 +16,7 @@ package org.eclipse.jdt.core.tests.dom;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
-
 import junit.framework.Test;
-
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.AST;
@@ -115,6 +113,6 @@ public class ASTParserTest extends org.eclipse.jdt.core.tests.junit.extension.Te
 	    this.parser.setFocalPosition(0);
 
 	    this.parser.setCompilerOptions(null);
-	    this.parser.setCompilerOptions(new HashMap<String, String>());
+	    this.parser.setCompilerOptions(new HashMap<>());
 	}
 }

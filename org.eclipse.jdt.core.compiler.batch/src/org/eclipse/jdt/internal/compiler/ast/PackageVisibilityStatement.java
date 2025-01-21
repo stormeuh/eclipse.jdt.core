@@ -45,8 +45,7 @@ public abstract class PackageVisibilityStatement extends ModuleStatement {
 		boolean errorsExist = resolvePackageReference(scope) == null;
 		if (this.isQualified()) {
 			HashtableOfObject modules = new HashtableOfObject(this.targets.length);
-			for (int i = 0; i < this.targets.length; i++) {
-				ModuleReference ref = this.targets[i];
+			for (ModuleReference ref : this.targets) {
 				// targets will be resolved later (during ModuleDeclaration.resolveModuleDirectives())
 				if (modules.containsKey(ref.moduleName)) {
 					scope.problemReporter().duplicateModuleReference(IProblem.DuplicateModuleRef, ref);
@@ -71,7 +70,7 @@ public abstract class PackageVisibilityStatement extends ModuleStatement {
 	}
 
 	@Override
-	public StringBuffer print(int indent, StringBuffer output) {
+	public StringBuilder print(int indent, StringBuilder output) {
 		this.pkgRef.print(indent, output);
 		if (this.isQualified()) {
 			output.append(" to "); //$NON-NLS-1$

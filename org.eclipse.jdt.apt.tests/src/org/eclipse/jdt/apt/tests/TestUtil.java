@@ -34,7 +34,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
-
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceDescription;
@@ -136,7 +135,7 @@ public class TestUtil
 					EXTANNOTATIONS_PKG, getPluginExtClassesDir());
 			FileFilter manifestFilter = new PackageFileFilter(
 					"META-INF", getPluginExtSrcDir()); //$NON-NLS-1$
-			Map<File, FileFilter> files = new HashMap<File, FileFilter>(2);
+			Map<File, FileFilter> files = new HashMap<>(2);
 			files.put(new File( getPluginExtClassesDir() ), classFilter);
 			files.put(new File( getPluginExtSrcDir() ), manifestFilter);
 			zip( classesJarPath, files );
@@ -265,7 +264,7 @@ public class TestUtil
 	 * Could use File.renameTo(File) but it's platform dependant.
 	 *
 	 * @param from - The file to move
-	 * @param path - The path to move it to
+	 * @param toPath - The path to move it to
 	 */
 	public static void moveFile(File from , String toPath)
 		throws FileNotFoundException, IOException {
@@ -297,20 +296,11 @@ public class TestUtil
 	public static void zip(String zipPath, Map<File, FileFilter> input)
 		throws IOException
 	{
-		ZipOutputStream zip = null;
-		try
+		try (ZipOutputStream zip = new ZipOutputStream( new FileOutputStream( zipPath ) ))
 		{
-			zip = new ZipOutputStream( new FileOutputStream( zipPath ) );
 			// +1 for last slash
 			for (Map.Entry<File, FileFilter> e : input.entrySet()) {
 				zip( zip, e.getKey(), e.getKey().getPath().length() + 1, e.getValue() );
-			}
-		}
-		finally
-		{
-			if( zip != null )
-			{
-				zip.close();
 			}
 		}
 	}

@@ -16,7 +16,6 @@
 package org.eclipse.jdt.internal.compiler.ast;
 
 import java.util.List;
-
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
 import org.eclipse.jdt.internal.compiler.flow.FlowContext;
@@ -366,8 +365,8 @@ private void initArity(Expression expression, int value) {
 }
 
 @Override
-public StringBuffer printExpressionNoParenthesis(int indent,
-		StringBuffer output) {
+public StringBuilder printExpressionNoParenthesis(int indent,
+		StringBuilder output) {
 	// keep implementation in sync with
 	// BinaryExpression#printExpressionNoParenthesis and
 	// OperatorExpression#printExpression

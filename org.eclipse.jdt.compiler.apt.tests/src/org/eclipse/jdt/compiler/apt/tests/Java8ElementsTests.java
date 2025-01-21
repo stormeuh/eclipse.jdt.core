@@ -18,16 +18,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import javax.lang.model.SourceVersion;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
-
-import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
-
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
 
 public class Java8ElementsTests extends TestCase {
 
@@ -345,7 +342,7 @@ public class Java8ElementsTests extends TestCase {
 		JavaCompiler compiler = BatchTestUtils.getEclipseCompiler();
 		File targetFolder = TestUtils.concatPath(BatchTestUtils.getSrcFolderName(), "targets", "bug520540");
 		BatchTestUtils.copyResources("targets/bug520540", targetFolder);
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-cp");
 		options.add(BatchTestUtils._tmpGenFolderName + File.pathSeparatorChar + BatchTestUtils._jls8ProcessorJarPath);
 		options.add("-processor");
@@ -361,7 +358,7 @@ public class Java8ElementsTests extends TestCase {
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 		File targetFolder = TestUtils.concatPath(BatchTestUtils.getSrcFolderName(), "targets", "bug520540");
 		BatchTestUtils.copyResources("targets/bug520540", targetFolder);
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-cp");
 		options.add(BatchTestUtils._tmpGenFolderName + File.pathSeparatorChar + BatchTestUtils._jls8ProcessorJarPath);
 		options.add("-processorpath");
@@ -433,7 +430,7 @@ public class Java8ElementsTests extends TestCase {
 		}
 
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-A" + processor);
 		options.add("-A" + testMethod);
 		// Javac 1.8 doesn't (yet?) support the -1.8 option
@@ -462,7 +459,7 @@ public class Java8ElementsTests extends TestCase {
 		}
 
 
-		List<String> options = new ArrayList<String>();
+		List<String> options = new ArrayList<>();
 		options.add("-A" + processor);
 		options.add("-A" + testMethod);
 		options.add("-processor");

@@ -28,6 +28,7 @@ public interface ITerminalSymbols {
 	int TokenNameCOMMENT_LINE = 1001;
 	int TokenNameCOMMENT_BLOCK = 1002;
 	int TokenNameCOMMENT_JAVADOC = 1003;
+	int TokenNameCOMMENT_MARKDOWN = 1004;
 
 	/**
 	 * @deprecated With the introduction of "restricted keywords" in Java 9, classification of tokens
@@ -101,7 +102,6 @@ public interface ITerminalSymbols {
 	int TokenNameStringLiteral = 45;
 	/**
 	 * @since 3.20
-	 * @noreference This class is not intended to be referenced by clients as it is a part of Java preview feature.
 	 */
 	int TokenNameTextBlock = 46;
 	int TokenNamePLUS_PLUS = 1;
@@ -213,4 +213,7 @@ public interface ITerminalSymbols {
 
 	/** @since 3.32 */
 	int TokenNameRestrictedIdentifierWhen = 415;
+
+	/** @since 3.38 */
+	int TokenNameUNDERSCORE = 416;
 }

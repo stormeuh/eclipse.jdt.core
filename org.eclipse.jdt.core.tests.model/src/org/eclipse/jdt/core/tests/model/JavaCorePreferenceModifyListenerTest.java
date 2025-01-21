@@ -15,10 +15,7 @@ package org.eclipse.jdt.core.tests.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-
 import junit.framework.Test;
-
-import org.eclipse.core.internal.preferences.EclipsePreferences;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.ConfigurationScope;
@@ -57,7 +54,8 @@ public class JavaCorePreferenceModifyListenerTest extends TestCase {
 		assertTrue(service.applyPreferences(exported).isOK());
 
 		// verify that the node is not modified
-		String debugString = ((EclipsePreferences) exported.node("/")).toDeepDebugString();
+		@SuppressWarnings("restriction")
+		String debugString = ((org.eclipse.core.internal.preferences.EclipsePreferences) exported.node("/")).toDeepDebugString();
 		assertFalse(debugString, exported.nodeExists("instance/org.eclipse.jdt.core"));
 		assertFalse(debugString, exported.nodeExists("/instance/org.eclipse.jdt.core"));
 	}

@@ -15,10 +15,18 @@ package org.eclipse.jdt.internal.compiler.ast;
 
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.impl.Constant;
-import org.eclipse.jdt.internal.compiler.lookup.*;
+import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
+import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
+import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
+import org.eclipse.jdt.internal.compiler.lookup.LookupEnvironment;
+import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
+import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
+import org.eclipse.jdt.internal.compiler.lookup.TypeVariableBinding;
 
 public class ClassLiteralAccess extends Expression {
 
@@ -73,7 +81,7 @@ public class ClassLiteralAccess extends Expression {
 	}
 
 	@Override
-	public StringBuffer printExpression(int indent, StringBuffer output) {
+	public StringBuilder printExpression(int indent, StringBuilder output) {
 
 		return this.type.print(0, output).append(".class"); //$NON-NLS-1$
 	}
@@ -119,7 +127,7 @@ public class ClassLiteralAccess extends Expression {
 				boxedType = scope.boxing(this.targetType);
 			}
 			if (environment.usesNullTypeAnnotations())
-				boxedType = environment.createAnnotatedType(boxedType, new AnnotationBinding[] { environment.getNonNullAnnotation() });
+				boxedType = environment.createNonNullAnnotatedType(boxedType);
 			this.resolvedType = environment.createParameterizedType(classType, new TypeBinding[]{ boxedType }, null/*not a member*/);
 		} else {
 			this.resolvedType = classType;

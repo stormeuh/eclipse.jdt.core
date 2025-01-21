@@ -15,9 +15,7 @@
 package org.eclipse.jdt.core.tests.dom;
 
 import java.lang.reflect.Method;
-
 import junit.framework.Test;
-
 import org.eclipse.jdt.core.dom.*;
 
 @SuppressWarnings("rawtypes")
@@ -131,7 +129,7 @@ public class ASTVisitorTest extends org.eclipse.jdt.core.tests.junit.extension.T
 	Type T4;
 	String T4S;
 
-	final StringBuffer b = new StringBuffer();
+	final StringBuilder b = new StringBuilder();
 
 	int API_LEVEL;
 

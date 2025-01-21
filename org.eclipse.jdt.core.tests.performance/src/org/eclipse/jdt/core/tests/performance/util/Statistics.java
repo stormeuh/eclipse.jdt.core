@@ -14,7 +14,6 @@
 package org.eclipse.jdt.core.tests.performance.util;
 
 import java.text.NumberFormat;
-
 import org.eclipse.test.internal.performance.InternalDimensions;
 import org.eclipse.test.internal.performance.data.DataPoint;
 import org.eclipse.test.internal.performance.data.Dim;
@@ -65,7 +64,7 @@ public Statistics(DataPoint[] dataPoints) {
 
 @Override
 public String toString() {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	int length = DIMENSIONS.length;
 	for (int idx=0; idx<length; idx++) {
 		dimToString(idx, buffer);
@@ -74,18 +73,18 @@ public String toString() {
 }
 
 public String toString(int dimIndex) {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	dimToString(dimIndex, buffer);
 	return buffer.toString();
 }
 
 public String elapsedProcessToString() {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	dimToString(1, buffer);
 	return buffer.toString();
 }
 
-void dimToString(int idx, StringBuffer buffer) {
+void dimToString(int idx, StringBuilder buffer) {
 	Dim dim = DIMENSIONS[idx];
 	buffer.append(dim.getName());
 	buffer.append(": n=");

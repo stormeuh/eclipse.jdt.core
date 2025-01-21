@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -45,7 +44,6 @@ import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
-
 import org.eclipse.jdt.internal.compiler.apt.dispatch.BaseProcessingEnvImpl;
 
 @SupportedAnnotationTypes("*")
@@ -305,8 +303,8 @@ public class RecordElementProcessor extends BaseElementProcessor {
 		recordComponent = (RecordComponentElement) element;
 		verifyAnnotations(recordComponent, new String[]{});
 		List<ExecutableElement> methodsIn = ElementFilter.methodsIn(enclosedElements);
-		List<String> actualMethodNames = methodsIn.stream().filter((m) -> m.getSimpleName().toString().startsWith("comp"))
-																	.map((m) -> m.getSimpleName().toString())
+		List<String> actualMethodNames = methodsIn.stream().filter(m -> m.getSimpleName().toString().startsWith("comp"))
+																	.map(m -> m.getSimpleName().toString())
 																	.collect(Collectors.toList());
 		assertEquals("incorrect method", 6, actualMethodNames.size());
 		for (ExecutableElement method : methodsIn) {
@@ -428,8 +426,8 @@ public class RecordElementProcessor extends BaseElementProcessor {
             assertEquals("expected enclosed Record Components mismatch", expRecComps.get(key), actRecComp.asType().getKind());
         }
 
-        List<String> actualMethodNames = methods.stream().map((m) -> m.getSimpleName().toString()).collect(Collectors.toList());
-        List<String> actualRecordCompNames = actRecComps.stream().map((m) -> m.getSimpleName().toString()).collect(Collectors.toList());
+        List<String> actualMethodNames = methods.stream().map(m -> m.getSimpleName().toString()).collect(Collectors.toList());
+        List<String> actualRecordCompNames = actRecComps.stream().map(m -> m.getSimpleName().toString()).collect(Collectors.toList());
 
         //checking the size
         assertEquals("expected enclosed Record Components size mismatch", expMethodNames.size(), actualMethodNames.size());
@@ -465,7 +463,7 @@ public class RecordElementProcessor extends BaseElementProcessor {
             assertEquals("expected enclosed Record Components mismatch", expRecComps.get(key), actRecComp.asType().getKind());
         }
 
-        List<String> actualRecordCompNames = actRecComps.stream().map((m) -> m.getSimpleName().toString()).collect(Collectors.toList());
+        List<String> actualRecordCompNames = actRecComps.stream().map(m -> m.getSimpleName().toString()).collect(Collectors.toList());
 
         if (!actualRecordCompNames.containsAll(expRecComppNames)) {
         	fail(" expected enclosed record components mismatch - expected at least : " + expRecComppNames + " " +
@@ -490,16 +488,16 @@ public class RecordElementProcessor extends BaseElementProcessor {
 		assertTrue("Constructors must be within all members", members.containsAll(constructors));
 		assertTrue("Constructors must be within enclosed elements", enclosedElements.containsAll(constructors));
 		assertEquals("Overloaded versions of ElementFilter.constructorsIn() must return equal results",
-				new HashSet<Element>(constructors), constructorsSet);
+				new HashSet<>(constructors), constructorsSet);
 
 		assertTrue("Methods must be within all members", members.containsAll(methods));
 		assertTrue("Methods must be within enclosed elements", enclosedElements.containsAll(methods));
 		assertEquals("Overloaded versions of ElementFilter.methodsIn() must return equal results",
-				new HashSet<Element>(methods), methodsSet);
+				new HashSet<>(methods), methodsSet);
 
 		assertTrue("Fields must be within all members", members.containsAll(fields));
 		assertTrue("Fields must be within enclosed elements", enclosedElements.containsAll(fields));
-		assertEquals("Overloaded versions of ElementFilter.fieldsIn() must return equal results", new HashSet<Element>(fields), fieldsSet);
+		assertEquals("Overloaded versions of ElementFilter.fieldsIn() must return equal results", new HashSet<>(fields), fieldsSet);
 	}
 	public void testRecords7() {
 		TypeElement recordElement = _elementUtils.getTypeElement("records.Record2");

@@ -13,16 +13,7 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.core.dom.rewrite.imports;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableSet;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * Keeping existing imports in their existing order, inserts each new import before or after the
@@ -35,8 +26,8 @@ import java.util.TreeSet;
  */
 final class OrderPreservingImportAdder implements ImportAdder {
 	static class AdjacentImports {
-		final Collection<ImportName> importsBefore = new ArrayList<ImportName>();
-		final Collection<ImportName> importsAfter = new ArrayList<ImportName>();
+		final Collection<ImportName> importsBefore = new ArrayList<>();
+		final Collection<ImportName> importsAfter = new ArrayList<>();
 
 		@Override
 		public String toString() {
@@ -81,11 +72,11 @@ final class OrderPreservingImportAdder implements ImportAdder {
 	@Override
 	public List<ImportName> addImports(Collection<ImportName> existingImports, Collection<ImportName> importsToAdd) {
 		if (importsToAdd.isEmpty()) {
-			return new ArrayList<ImportName>(existingImports);
+			return new ArrayList<>(existingImports);
 		}
 
-		List<ImportName> sortedNewImports = new ArrayList<ImportName>(importsToAdd);
-		sortedNewImports.removeAll(new HashSet<ImportName>(existingImports));
+		List<ImportName> sortedNewImports = new ArrayList<>(importsToAdd);
+		sortedNewImports.removeAll(new HashSet<>(existingImports));
 		Collections.sort(sortedNewImports, this.importComparator);
 
 		if (existingImports.isEmpty()) {
@@ -93,10 +84,10 @@ final class OrderPreservingImportAdder implements ImportAdder {
 		}
 
 		Map<ImportName, AdjacentImports> adjacentNewImports =
-				determineAdjacentNewImports(new ArrayList<ImportName>(existingImports), sortedNewImports);
+				determineAdjacentNewImports(new ArrayList<>(existingImports), sortedNewImports);
 
 		List<ImportName> importsWithAdditions =
-				new ArrayList<ImportName>(existingImports.size() + sortedNewImports.size());
+				new ArrayList<>(existingImports.size() + sortedNewImports.size());
 		for (ImportName existingImport : existingImports) {
 			// Remove the adjacent imports so they don't get inserted multiple times in the case
 			// of duplicate imports.
@@ -132,10 +123,10 @@ final class OrderPreservingImportAdder implements ImportAdder {
 	private Map<ImportName, AdjacentImports> determineAdjacentNewImports(
 			Collection<ImportName> existingImports,
 			Iterable<ImportName> sortedNewImports) {
-		NavigableSet<ImportName> existingImportsTreeSet = new TreeSet<ImportName>(this.importComparator);
+		NavigableSet<ImportName> existingImportsTreeSet = new TreeSet<>(this.importComparator);
 		existingImportsTreeSet.addAll(existingImports);
 
-		Map<ImportName, AdjacentImports> adjacentNewImports = new HashMap<ImportName, AdjacentImports>();
+		Map<ImportName, AdjacentImports> adjacentNewImports = new HashMap<>();
 		for (ImportName existingImport : existingImports) {
 			adjacentNewImports.put(existingImport, new AdjacentImports());
 		}

@@ -18,17 +18,7 @@ package org.eclipse.jdt.internal.compiler.parser;
  */
 import java.util.HashSet;
 import java.util.Set;
-
-import org.eclipse.jdt.internal.compiler.ast.AbstractMethodDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ASTNode;
-import org.eclipse.jdt.internal.compiler.ast.Block;
-import org.eclipse.jdt.internal.compiler.ast.CompilationUnitDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ExportsStatement;
-import org.eclipse.jdt.internal.compiler.ast.FieldDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.ImportReference;
-import org.eclipse.jdt.internal.compiler.ast.Initializer;
-import org.eclipse.jdt.internal.compiler.ast.ModuleDeclaration;
-import org.eclipse.jdt.internal.compiler.ast.TypeDeclaration;
+import org.eclipse.jdt.internal.compiler.ast.*;
 
 public class RecoveredUnit extends RecoveredElement {
 
@@ -251,7 +241,7 @@ public int getLastStart() {
 }
 @Override
 public String toString(int tab) {
-	StringBuffer result = new StringBuffer(tabString(tab));
+	StringBuilder result = new StringBuilder(tabString(tab));
 	result.append("Recovered unit: [\n"); //$NON-NLS-1$
 	this.unitDeclaration.print(tab + 1, result);
 	result.append(tabString(tab + 1));

@@ -15,7 +15,6 @@ package org.eclipse.jdt.internal.core;
 
 import java.io.IOException;
 import java.util.Map;
-
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -24,6 +23,7 @@ import org.eclipse.jdt.internal.compiler.classfmt.ClassFileReader;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFormatException;
 import org.eclipse.jdt.internal.compiler.env.IBinaryModule;
 import org.eclipse.jdt.internal.compiler.env.IDependent;
+import org.eclipse.jdt.internal.compiler.env.IElementInfo;
 import org.eclipse.jdt.internal.compiler.env.IModule;
 import org.eclipse.jdt.internal.compiler.lookup.TypeConstants;
 import org.eclipse.jdt.internal.core.nd.java.model.BinaryModuleDescriptor;
@@ -49,7 +49,7 @@ public class ModularClassFile extends AbstractClassFile implements IModularClass
 	 * @see Signature
 	 */
 	@Override
-	protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map newElements, IResource underlyingResource) throws JavaModelException {
+	protected boolean buildStructure(OpenableElementInfo info, IProgressMonitor pm, Map<IJavaElement, IElementInfo> newElements, IResource underlyingResource) throws JavaModelException {
 		IBinaryModule moduleInfo = getBinaryModuleInfo();
 		if (moduleInfo == null) {
 			// The structure of a class file is unknown if a class file format errors occurred
@@ -62,7 +62,7 @@ public class ModularClassFile extends AbstractClassFile implements IModularClass
 		BinaryModule module = new BinaryModule(this, moduleInfo);
 		newElements.put(module, moduleInfo);
 		info.setChildren(new IJavaElement[] {module});
-		((ClassFileInfo) info).setModule(module);
+		info.setModule(module);
 		((PackageFragmentRootInfo) getPackageFragmentRoot().getElementInfo()).setModule(module);
 		return true;
 	}
@@ -228,7 +228,7 @@ public class ModularClassFile extends AbstractClassFile implements IModularClass
 		return JavaElement.JEM_MODULAR_CLASSFILE;
 	}
 	@Override
-	protected void escapeMementoName(StringBuffer buffer, String mementoName) {
+	protected void escapeMementoName(StringBuilder buffer, String mementoName) {
 		// nop, name is irrelevant
 	}
 	@Override
@@ -253,7 +253,7 @@ public class ModularClassFile extends AbstractClassFile implements IModularClass
 	 * @see Openable
 	 */
 	@Override
-	protected IBuffer openBuffer(IProgressMonitor pm, Object info) throws JavaModelException {
+	protected IBuffer openBuffer(IProgressMonitor pm, IElementInfo info) throws JavaModelException {
 		SourceMapper mapper = getSourceMapper();
 		if (mapper != null) {
 			return mapSource(mapper);

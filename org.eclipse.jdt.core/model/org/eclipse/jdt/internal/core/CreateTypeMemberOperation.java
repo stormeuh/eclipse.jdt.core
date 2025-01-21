@@ -15,7 +15,6 @@ package org.eclipse.jdt.internal.core;
 
 import java.util.List;
 import java.util.Map;
-
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaModelStatus;
@@ -138,7 +137,7 @@ protected ASTNode generateElementAST(ASTRewrite rewriter, ICompilationUnit cu) t
 }
 private String removeIndentAndNewLines(String code, ICompilationUnit cu) throws JavaModelException {
 	IJavaProject project = cu.getJavaProject();
-	Map options = project.getOptions(true/*inherit JavaCore options*/);
+	Map<String, String> options = project.getOptions(true/*inherit JavaCore options*/);
 	int tabWidth = IndentManipulation.getTabWidth(options);
 	int indentWidth = IndentManipulation.getIndentWidth(options);
 	int indent = IndentManipulation.measureIndentUnits(code, tabWidth, indentWidth);

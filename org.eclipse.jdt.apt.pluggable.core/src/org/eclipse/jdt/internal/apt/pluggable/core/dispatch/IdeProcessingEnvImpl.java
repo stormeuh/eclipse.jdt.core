@@ -26,9 +26,7 @@ import java.util.Map.Entry;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.lang.model.element.Element;
-
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.Path;
@@ -50,7 +48,6 @@ import org.eclipse.jdt.internal.compiler.apt.model.IElementInfo;
  * {@link IdeAnnotationProcessorManager} that owns it.
  * @see org.eclipse.jdt.internal.compiler.apt.dispatch.BatchProcessingEnvImpl
  */
-@SuppressWarnings("restriction")
 public abstract class IdeProcessingEnvImpl extends BaseProcessingEnvImpl {
 
 	private final IdeAnnotationProcessorManager _dispatchManager;

@@ -23,17 +23,20 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.ast;
 
-import java.util.List;
-
 import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.ASSIGNMENT_CONTEXT;
 
+import java.util.List;
 import org.eclipse.jdt.core.compiler.IProblem;
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
-import org.eclipse.jdt.internal.compiler.impl.*;
 import org.eclipse.jdt.internal.compiler.ast.TypeReference.AnnotationCollector;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
-import org.eclipse.jdt.internal.compiler.codegen.*;
-import org.eclipse.jdt.internal.compiler.flow.*;
+import org.eclipse.jdt.internal.compiler.codegen.AnnotationContext;
+import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
+import org.eclipse.jdt.internal.compiler.codegen.Opcodes;
+import org.eclipse.jdt.internal.compiler.flow.FlowContext;
+import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
+import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
+import org.eclipse.jdt.internal.compiler.impl.Constant;
 import org.eclipse.jdt.internal.compiler.lookup.*;
 import org.eclipse.jdt.internal.compiler.problem.ProblemReporter;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
@@ -99,8 +102,8 @@ public FlowInfo analyseCode(MethodScope initializationScope, FlowContext flowCon
 				.unconditionalInits();
 		flowInfo.markAsDefinitelyAssigned(this.binding);
 	}
+	CompilerOptions options = initializationScope.compilerOptions();
 	if (this.initialization != null && this.binding != null) {
-		CompilerOptions options = initializationScope.compilerOptions();
 		if (options.isAnnotationBasedNullAnalysisEnabled) {
 			if (this.binding.isNonNull() || options.sourceLevel >= ClassFileConstants.JDK1_8) {
 				int nullStatus = this.initialization.nullStatus(flowInfo, flowContext);
@@ -108,6 +111,20 @@ public FlowInfo analyseCode(MethodScope initializationScope, FlowContext flowCon
 			}
 		}
 		this.initialization.checkNPEbyUnboxing(initializationScope, flowContext, flowInfo);
+	}
+	if (options.isAnnotationBasedResourceAnalysisEnabled
+			&& this.binding != null
+			&& FakedTrackingVariable.isCloseableNotWhiteListed(this.binding.type))
+	{
+		long owningTagBits = this.binding.tagBits & TagBits.AnnotationOwningMASK;
+		if (this.binding.isStatic()) {
+			initializationScope.problemReporter().staticResourceField(this);
+		} else if (owningTagBits == 0) {
+			initializationScope.problemReporter().shouldMarkFieldAsOwning(this);
+		} else if (owningTagBits == TagBits.AnnotationOwning
+				&& !this.binding.declaringClass.hasTypeBit(TypeIds.BitAutoCloseable|TypeIds.BitCloseable)) {
+			initializationScope.problemReporter().shouldImplementAutoCloseable(this);
+		}
 	}
 	return flowInfo;
 }
@@ -159,8 +176,7 @@ public void generateCode(BlockScope currentScope, CodeStream codeStream) {
 }
 public void getAllAnnotationContexts(int targetType, List<AnnotationContext> allAnnotationContexts) {
 	AnnotationCollector collector = new AnnotationCollector(this.type, targetType, allAnnotationContexts);
-	for (int i = 0, max = this.annotations.length; i < max; i++) {
-		Annotation annotation = this.annotations[i];
+	for (Annotation annotation : this.annotations) {
 		annotation.traverse(collector, (BlockScope) null);
 	}
 }
@@ -184,14 +200,14 @@ public boolean isFinal() {
 	return (this.modifiers & ClassFileConstants.AccFinal) != 0;
 }
 @Override
-public StringBuffer print(int indent, StringBuffer output) {
+public StringBuilder print(int indent, StringBuilder output) {
 	if (this.isARecordComponent)
 		output.append("/* Implicit */"); //$NON-NLS-1$
 	return super.print(indent, output);
 }
 
 @Override
-public StringBuffer printStatement(int indent, StringBuffer output) {
+public StringBuilder printStatement(int indent, StringBuilder output) {
 	if (this.javadoc != null) {
 		this.javadoc.print(indent, output);
 	}
@@ -199,6 +215,10 @@ public StringBuffer printStatement(int indent, StringBuffer output) {
 }
 
 public void resolve(MethodScope initializationScope) {
+	if (this.isUnnamed(initializationScope)) {
+		initializationScope.problemReporter().illegalUseOfUnderscoreAsAnIdentifier(this.sourceStart, this.sourceEnd, initializationScope.compilerOptions().sourceLevel > ClassFileConstants.JDK1_8, true);
+	}
+
 	// the two <constant = Constant.NotAConstant> could be regrouped into
 	// a single line but it is clearer to have two lines while the reason of their
 	// existence is not at all the same. See comment for the second one.
@@ -261,8 +281,8 @@ public void resolve(MethodScope initializationScope) {
 		resolveAnnotations(initializationScope, this.annotations, this.binding);
 		// Check if this declaration should now have the type annotations bit set
 		if (this.annotations != null) {
-			for (int i = 0, max = this.annotations.length; i < max; i++) {
-				TypeBinding resolvedAnnotationType = this.annotations[i].resolvedType;
+			for (Annotation annotation : this.annotations) {
+				TypeBinding resolvedAnnotationType = annotation.resolvedType;
 				if (resolvedAnnotationType != null && (resolvedAnnotationType.getAnnotationTagBits() & TagBits.AnnotationForTypeUse) != 0) {
 					this.bits |= ASTNode.HasTypeAnnotations;
 					break;

@@ -13,35 +13,17 @@
 package org.eclipse.jdt.core.tests.dom;
 
 import java.util.List;
-
+import junit.framework.AssertionFailedError;
+import junit.framework.Test;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.compiler.IProblem;
-import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
-import org.eclipse.jdt.core.dom.ASTParser;
-import org.eclipse.jdt.core.dom.BreakStatement;
-import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.Expression;
-import org.eclipse.jdt.core.dom.IBinding;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
-import org.eclipse.jdt.core.dom.SimpleName;
-import org.eclipse.jdt.core.dom.Statement;
-import org.eclipse.jdt.core.dom.SwitchCase;
-import org.eclipse.jdt.core.dom.SwitchExpression;
-import org.eclipse.jdt.core.dom.SwitchStatement;
-import org.eclipse.jdt.core.dom.Type;
-import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
-import org.eclipse.jdt.core.dom.VariableDeclarationStatement;
-import org.eclipse.jdt.core.dom.YieldStatement;
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.internal.core.dom.rewrite.ASTRewriteFlattener;
 import org.eclipse.jdt.internal.core.dom.rewrite.RewriteEventStore;
-
-import junit.framework.AssertionFailedError;
-import junit.framework.Test;
 
 /*
  * This test, although originally was created for AST Level 14,
@@ -389,7 +371,7 @@ public class ASTConverter14Test extends ConverterTestSetup {
 					"3. ERROR in /Foo/src/X.java (at line 14)\n" +
 					"	for (String s : switch(i) { case 1 -> ; default -> list; }) {\n" +
 					"	                                   ^^\n" +
-					"Syntax error on token \"->\", Expression expected after this token\n" +
+					"Syntax error on token \"->\", : expected\n" +
 					"----------\n" +
 					"4. ERROR in /Foo/src/X.java (at line 18)\n" +
 					"	case 0 -> missing;\n" +
@@ -444,8 +426,11 @@ public class ASTConverter14Test extends ConverterTestSetup {
 		} catch(UnsupportedOperationException e) {
 			fail("Should not throw UnsupportedOperationException");
 		} catch(AssertionFailedError e) {
-			e.printStackTrace();
-			return;
+			if (e.getMessage().contains("The enum constant WEDNESDAY needs a corresponding case label")) {
+				// expected
+				return;
+			}
+			throw e;
 		}
 
 	}
@@ -477,8 +462,11 @@ public class ASTConverter14Test extends ConverterTestSetup {
 		} catch(UnsupportedOperationException e) {
 			fail("Should not throw UnsupportedOperationException");
 		} catch(AssertionFailedError e) {
-			e.printStackTrace();
-			return;
+			if (e.getMessage().contains("The Java feature 'Text Blocks' is only available with source level 15 and above")) {
+				// expected
+				return;
+			}
+			throw e;
 		}
 		fail("Compilation should not succeed");
 

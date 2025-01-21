@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2023 IBM Corporation and others.
+ * Copyright (c) 2000, 2024 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -65,16 +65,18 @@
  *******************************************************************************/
 package org.eclipse.jdt.internal.compiler.ast;
 
-import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.*;
+import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.ASSIGNMENT_CONTEXT;
+import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.INVOCATION_CONTEXT;
+import static org.eclipse.jdt.internal.compiler.ast.ExpressionContext.VANILLA_CONTEXT;
 
 import java.util.HashMap;
 import java.util.function.BiConsumer;
-
 import org.eclipse.jdt.core.compiler.CharOperation;
 import org.eclipse.jdt.internal.compiler.ASTVisitor;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.codegen.CodeStream;
 import org.eclipse.jdt.internal.compiler.codegen.Opcodes;
+import org.eclipse.jdt.internal.compiler.flow.ConditionalFlowInfo;
 import org.eclipse.jdt.internal.compiler.flow.FlowContext;
 import org.eclipse.jdt.internal.compiler.flow.FlowInfo;
 import org.eclipse.jdt.internal.compiler.flow.UnconditionalFlowInfo;
@@ -82,34 +84,7 @@ import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.eclipse.jdt.internal.compiler.impl.Constant;
 import org.eclipse.jdt.internal.compiler.impl.IrritantSet;
 import org.eclipse.jdt.internal.compiler.impl.ReferenceContext;
-import org.eclipse.jdt.internal.compiler.lookup.ArrayBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Binding;
-import org.eclipse.jdt.internal.compiler.lookup.BlockScope;
-import org.eclipse.jdt.internal.compiler.lookup.ExtraCompilerModifiers;
-import org.eclipse.jdt.internal.compiler.lookup.FieldBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ImplicitNullAnnotationVerifier;
-import org.eclipse.jdt.internal.compiler.lookup.InferenceContext18;
-import org.eclipse.jdt.internal.compiler.lookup.InferenceVariable;
-import org.eclipse.jdt.internal.compiler.lookup.LocalVariableBinding;
-import org.eclipse.jdt.internal.compiler.lookup.MethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.MissingTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedGenericMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ParameterizedMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.PolyParameterizedGenericMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.PolyTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.PolymorphicMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ProblemMethodBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ProblemReasons;
-import org.eclipse.jdt.internal.compiler.lookup.ProblemReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.RawTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.ReferenceBinding;
-import org.eclipse.jdt.internal.compiler.lookup.Scope;
-import org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TagBits;
-import org.eclipse.jdt.internal.compiler.lookup.TypeBinding;
-import org.eclipse.jdt.internal.compiler.lookup.TypeConstants;
-import org.eclipse.jdt.internal.compiler.lookup.TypeIds;
-import org.eclipse.jdt.internal.compiler.lookup.TypeVariableBinding;
+import org.eclipse.jdt.internal.compiler.lookup.*;
 import org.eclipse.jdt.internal.compiler.problem.ProblemSeverities;
 import org.eclipse.jdt.internal.compiler.util.SimpleLookupTable;
 
@@ -153,17 +128,16 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, Fl
 	yieldQualifiedCheck(currentScope);
 	// recording the closing of AutoCloseable resources:
 	CompilerOptions compilerOptions = currentScope.compilerOptions();
-	boolean analyseResources = compilerOptions.analyseResourceLeaks;
+	boolean analyseResources = compilerOptions.analyseResourceLeaks && flowInfo.reachMode() == FlowInfo.REACHABLE;
 	if (analyseResources) {
 		if (nonStatic) {
 			// closeable.close()
-			if (CharOperation.equals(TypeConstants.CLOSE, this.selector)) {
+			if (this.binding.isClosingMethod()) {
 				recordCallingClose(currentScope, flowContext, flowInfo, this.receiver);
 			}
 		} else if (this.arguments != null && this.arguments.length > 0 && FakedTrackingVariable.isAnyCloseable(this.arguments[0].resolvedType)) {
 			// Helper.closeMethod(closeable, ..)
-			for (int i=0; i<TypeConstants.closeMethods.length; i++) {
-				CloseMethodRecord record = TypeConstants.closeMethods[i];
+			for (CloseMethodRecord record : TypeConstants.closeMethods) {
 				if (CharOperation.equals(record.selector, this.selector)
 						&& CharOperation.equals(record.typeName, this.binding.declaringClass.compoundName))
 				{
@@ -221,23 +195,28 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, Fl
 					flowInfo = analyseNullAssertion(currentScope, argument, flowContext, flowInfo, true);
 					break;
 				case ARG_NONNULL_IF_TRUE:
-					recordFlowUpdateOnResult(((SingleNameReference) argument).localVariableBinding(), true, false);
+					LocalVariableBinding localBinding = ((SingleNameReference) argument).localVariableBinding();
+					recordFlowUpdateOnResult(localBinding, true, false);
 					flowInfo = argument.analyseCode(currentScope, flowContext, flowInfo).unconditionalInits();
+					flowInfo = setUnreachable(flowInfo, flowContext, localBinding, AssertUtil.ARG_NONNULL_IF_TRUE);
 					break;
 				case ARG_NONNULL_IF_TRUE_NEGATABLE:
-					recordFlowUpdateOnResult(((SingleNameReference) argument).localVariableBinding(), true, true);
+					localBinding = ((SingleNameReference) argument).localVariableBinding();
+					recordFlowUpdateOnResult(localBinding, true, true);
 					flowInfo = argument.analyseCode(currentScope, flowContext, flowInfo).unconditionalInits();
+					flowInfo = setUnreachable(flowInfo, flowContext, localBinding, AssertUtil.ARG_NONNULL_IF_TRUE_NEGATABLE);
 					break;
 				case ARG_NULL_IF_TRUE:
-					recordFlowUpdateOnResult(((SingleNameReference) argument).localVariableBinding(), false, true);
+					localBinding = ((SingleNameReference) argument).localVariableBinding();
+					recordFlowUpdateOnResult(localBinding, false, true);
 					flowInfo = argument.analyseCode(currentScope, flowContext, flowInfo).unconditionalInits();
+					flowInfo = setUnreachable(flowInfo, flowContext, localBinding, AssertUtil.ARG_NULL_IF_TRUE);
 					break;
 				default:
 					flowInfo = argument.analyseCode(currentScope, flowContext, flowInfo).unconditionalInits();
 			}
 			if (analyseResources) {
-				// if argument is an AutoCloseable insert info that it *may* be closed (by the target method, i.e.)
-				flowInfo = FakedTrackingVariable.markPassedToOutside(currentScope, argument, flowInfo, flowContext, false);
+				flowInfo = handleResourcePassedToInvocation(currentScope, this.binding, argument, i, flowContext, flowInfo);
 			}
 		}
 		analyseArguments(currentScope, flowContext, flowInfo, this.binding, this.arguments);
@@ -255,13 +234,60 @@ public FlowInfo analyseCode(BlockScope currentScope, FlowContext flowContext, Fl
 		//               NullReferenceTest#test0510
 	}
 	// after having analysed exceptions above start tracking newly allocated resource:
-	if (analyseResources && FakedTrackingVariable.isAnyCloseable(this.resolvedType))
-		flowInfo = FakedTrackingVariable.analyseCloseableAcquisition(currentScope, flowInfo, this);
+	if (analyseResources) {
+		if (FakedTrackingVariable.isAnyCloseable(this.resolvedType))
+			flowInfo = FakedTrackingVariable.analyseCloseableAcquisition(currentScope, flowInfo, flowContext, this);
+		if (!FakedTrackingVariable.isFluentMethod(this.binding))
+			FakedTrackingVariable.cleanUpUnassigned(currentScope, this.receiver, flowInfo, false);
+	}
 
 	manageSyntheticAccessIfNecessary(currentScope, flowInfo);
 	// account for pot. exceptions thrown by method execution
 	flowContext.recordAbruptExit();
 	flowContext.expireNullCheckedFieldInfo(); // no longer trust this info after any message send
+	return flowInfo;
+}
+
+private FlowInfo setUnreachable(FlowInfo flowInfo, FlowContext flowContext, LocalVariableBinding localBinding,
+		AssertUtil assertUtil) {
+	if ((flowInfo.tagBits & FlowInfo.UNREACHABLE) == 0) {
+		boolean isDefinitellyNull;
+		boolean isDefinitellyNonNull;
+		switch (assertUtil) {
+			case ARG_NONNULL_IF_TRUE: {
+				isDefinitellyNull = flowInfo.isDefinitelyNull(localBinding);
+				if (isDefinitellyNull) {
+					flowInfo = FlowInfo.conditional(flowInfo.copy(), flowInfo.copy());
+					((ConditionalFlowInfo) flowInfo).initsWhenTrue().setReachMode(FlowInfo.UNREACHABLE_BY_NULLANALYSIS);
+				}
+				break;
+			}
+			case ARG_NULL_IF_TRUE: {
+				isDefinitellyNull = flowInfo.isDefinitelyNull(localBinding);
+				isDefinitellyNonNull = flowInfo.isDefinitelyNonNull(localBinding);
+				flowInfo = FlowInfo.conditional(flowInfo.copy(), flowInfo.copy());
+				if (isDefinitellyNull) {
+					((ConditionalFlowInfo) flowInfo).initsWhenFalse().setReachMode(FlowInfo.UNREACHABLE_BY_NULLANALYSIS);
+				} else if (isDefinitellyNonNull) {
+					((ConditionalFlowInfo) flowInfo).initsWhenTrue.setReachMode(FlowInfo.UNREACHABLE_BY_NULLANALYSIS);
+				}
+				break;
+			}
+			case ARG_NONNULL_IF_TRUE_NEGATABLE: {
+				isDefinitellyNull = flowInfo.isDefinitelyNull(localBinding);
+				isDefinitellyNonNull = flowInfo.isDefinitelyNonNull(localBinding);
+				flowInfo = FlowInfo.conditional(flowInfo.copy(), flowInfo.copy());
+				if (isDefinitellyNull) {
+					((ConditionalFlowInfo) flowInfo).initsWhenTrue().setReachMode(FlowInfo.UNREACHABLE_BY_NULLANALYSIS);
+				} else if (isDefinitellyNonNull) {
+					((ConditionalFlowInfo) flowInfo).initsWhenFalse.setReachMode(FlowInfo.UNREACHABLE_BY_NULLANALYSIS);
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
 	return flowInfo;
 }
 public void recordFlowUpdateOnResult(LocalVariableBinding local, boolean nonNullIfTrue, boolean negatable) {
@@ -286,15 +312,34 @@ private void yieldQualifiedCheck(BlockScope currentScope) {
 		return;
 	if (!CharOperation.equals(this.selector, TypeConstants.YIELD))
 		return;
-	currentScope.problemReporter().switchExpressionsYieldUnqualifiedMethodError(this);
+	currentScope.problemReporter().unqualifiedYieldMethod(this);
 }
 private void recordCallingClose(BlockScope currentScope, FlowContext flowContext, FlowInfo flowInfo, Expression closeTarget) {
-	FakedTrackingVariable trackingVariable = FakedTrackingVariable.getCloseTrackingVariable(closeTarget, flowInfo, flowContext);
-	if (trackingVariable != null) { // null happens if target is not a local variable or not an AutoCloseable
-		if (trackingVariable.methodScope == currentScope.methodScope()) {
-			trackingVariable.markClose(flowInfo, flowContext);
-		} else {
-			trackingVariable.markClosedInNestedMethod();
+	if (closeTarget.isThis() || closeTarget.isSuper()) {
+		// this / super calls of closing method take care of all owning fields
+		ReferenceBinding currentClass = this.binding.declaringClass; // responsibility starts at the class and upwards
+		while (currentClass != null) {
+			for (FieldBinding fieldBinding : currentClass.fields()) {
+				if (fieldBinding.closeTracker != null) {
+					FakedTrackingVariable trackingVariable = fieldBinding.closeTracker;
+					if (trackingVariable.methodScope == null || trackingVariable.methodScope == currentScope.methodScope()) {
+						trackingVariable.markClose(flowInfo, flowContext);
+					} else {
+						trackingVariable.markClosedInNestedMethod();
+					}
+				}
+			}
+			currentClass = currentClass.superclass();
+		}
+	} else {
+		FakedTrackingVariable trackingVariable = FakedTrackingVariable.getCloseTrackingVariable(closeTarget, flowInfo, flowContext,
+				currentScope.compilerOptions().isAnnotationBasedResourceAnalysisEnabled);
+		if (trackingVariable != null) { // null happens if target is not a variable or not an AutoCloseable
+			if (trackingVariable.methodScope == null || trackingVariable.methodScope == currentScope.methodScope()) {
+				trackingVariable.markClose(flowInfo, flowContext);
+			} else {
+				trackingVariable.markClosedInNestedMethod();
+			}
 		}
 	}
 }
@@ -706,7 +751,7 @@ public TypeBinding postConversionType(Scope scope) {
 }
 
 @Override
-public StringBuffer printExpression(int indent, StringBuffer output){
+public StringBuilder printExpression(int indent, StringBuilder output){
 
 	if (!this.receiver.isImplicitThis()) this.receiver.printExpression(0, output).append('.');
 	if (this.typeArguments != null) {
@@ -736,25 +781,14 @@ public TypeBinding resolveType(BlockScope scope) {
 	if (this.constant != Constant.NotAConstant) {
 		this.constant = Constant.NotAConstant;
 		long sourceLevel = scope.compilerOptions().sourceLevel;
-		boolean receiverCast = false;
 		if (this.receiver instanceof CastExpression) {
 			this.receiver.bits |= ASTNode.DisableUnnecessaryCastCheck; // will check later on
-			receiverCast = true;
 		}
 		this.actualReceiverType = this.receiver.resolveType(scope);
 		if (this.actualReceiverType instanceof InferenceVariable) {
 				return null; // not yet ready for resolving
 		}
 		this.receiverIsType = this.receiver.isType();
-		if (receiverCast && this.actualReceiverType != null) {
-			// due to change of declaring class with receiver type, only identity cast should be notified
-			TypeBinding resolvedType2 = ((CastExpression)this.receiver).expression.resolvedType;
-			if (TypeBinding.equalsEquals(resolvedType2, this.actualReceiverType)) {
-				if (!scope.environment().usesNullTypeAnnotations() || !NullAnnotationMatching.analyse(this.actualReceiverType, resolvedType2, -1).isAnyMismatch()) {
-					scope.problemReporter().unnecessaryCast((CastExpression) this.receiver);
-				}
-			}
-		}
 		// resolve type arguments (for generic constructor call)
 		if (this.typeArguments != null) {
 			int length = this.typeArguments.length;
@@ -771,8 +805,8 @@ public TypeBinding resolveType(BlockScope scope) {
 			}
 			if (this.argumentsHaveErrors) {
 				if (this.arguments != null) { // still attempt to resolve arguments
-					for (int i = 0, max = this.arguments.length; i < max; i++) {
-						this.arguments[i].resolveType(scope);
+					for (Expression argument : this.arguments) {
+						argument.resolveType(scope);
 					}
 				}
 				return null;
@@ -906,6 +940,12 @@ public TypeBinding resolveType(BlockScope scope) {
 		return null;
 	}
 
+	if (this.receiver instanceof CastExpression castedRecevier) {
+		// this check was suppressed while resolving receiver, check now based on the resolved method
+		if (isUnnecessaryReceiverCast(scope, castedRecevier.expression.resolvedType))
+			scope.problemReporter().unnecessaryCast(castedRecevier);
+	}
+
 	if (compilerOptions.isAnnotationBasedNullAnalysisEnabled) {
 		ImplicitNullAnnotationVerifier.ensureNullnessIsKnown(this.binding, scope);
 		if (compilerOptions.sourceLevel >= ClassFileConstants.JDK1_8) {
@@ -928,7 +968,7 @@ public TypeBinding resolveType(BlockScope scope) {
 			this.binding = scope.environment().updatePolymorphicMethodReturnType((PolymorphicMethodBinding) this.binding, TypeBinding.VOID);
 		}
 	}
-	if ((this.binding.tagBits & TagBits.HasMissingType) != 0) {
+	if ((this.binding.tagBits & TagBits.HasMissingType) != 0 && isMissingTypeRelevant()) {
 		scope.problemReporter().missingTypeInMethod(this, this.binding);
 	}
 	if (!this.binding.isStatic()) {
@@ -949,6 +989,10 @@ public TypeBinding resolveType(BlockScope scope) {
 			if (TypeBinding.notEquals(this.actualReceiverType, oldReceiverType) && TypeBinding.notEquals(this.receiver.postConversionType(scope), this.actualReceiverType)) { // record need for explicit cast at codegen since receiver could not handle it
 				this.bits |= NeedReceiverGenericCast;
 			}
+		}
+		if (this.actualReceiverType != null && scope.isInsideEarlyConstructionContext(this.actualReceiverType, true) &&
+				(this.receiver instanceof ThisReference thisReference && thisReference.isImplicitThis())) {
+			scope.problemReporter().messageSendInEarlyConstructionContext(this);
 		}
 	} else {
 		// static message invoked through receiver? legal but unoptimal (optional warning).
@@ -988,6 +1032,9 @@ public TypeBinding resolveType(BlockScope scope) {
 			returnType = returnType.capture(scope, this.sourceStart, this.sourceEnd);
 		}
 	}
+	if (scope.environment().usesNullTypeAnnotations()) {
+		returnType = handleNullnessCodePatterns(scope, returnType);
+	}
 	this.resolvedType = returnType;
 	if (this.receiver.isSuper() && compilerOptions.getSeverity(CompilerOptions.OverridingMethodWithoutSuperInvocation) != ProblemSeverities.Ignore) {
 		final ReferenceContext referenceContext = scope.methodScope().referenceContext;
@@ -1013,6 +1060,73 @@ public TypeBinding resolveType(BlockScope scope) {
 				: null;
 }
 
+protected boolean isUnnecessaryReceiverCast(BlockScope scope, TypeBinding uncastedReceiverType) {
+	if (uncastedReceiverType == null || !uncastedReceiverType.isCompatibleWith(this.binding.declaringClass)) {
+		return false;
+	}
+	if (uncastedReceiverType.isRawType() && this.binding.declaringClass.isParameterizedType()) {
+		return false;
+	}
+	MethodBinding otherMethod = scope.getMethod(uncastedReceiverType, this.selector, this.argumentTypes, this);
+	if (!otherMethod.isValidBinding()) {
+		return false;
+	}
+	if (scope.environment().usesNullTypeAnnotations()
+			&& NullAnnotationMatching.analyse(this.actualReceiverType, uncastedReceiverType, -1).isAnyMismatch()) {
+		return false;
+	}
+	return otherMethod == this.binding
+			|| MethodVerifier.doesMethodOverride(this.binding, otherMethod, scope.environment())
+			|| MethodVerifier.doesMethodOverride(otherMethod, this.binding, scope.environment());
+}
+
+protected boolean isMissingTypeRelevant() {
+	if ((this.bits & ASTNode.InsideExpressionStatement) != 0) {
+		if (this.binding.collectMissingTypes(null, false) == null)
+			return false; // only irrelevant return type is missing
+	}
+	if ((this.binding.returnType.tagBits & TagBits.HasMissingType) == 0
+			&& this.binding.isVarargs()) {
+		int argLen = this.arguments != null ? this.arguments.length : 0;
+		if (argLen < this.binding.parameters.length) {
+			// are all but the irrelevant varargs type present?
+			for (int i = 0; i < argLen; i++) {
+				if ((this.binding.parameters[i].tagBits & TagBits.HasMissingType) != 0)
+					return true; // this one *is* relevant - actually this case is already detected during findMethodBinding()
+			}
+			return false;
+		}
+	}
+	return true;
+}
+
+protected TypeBinding handleNullnessCodePatterns(BlockScope scope, TypeBinding returnType) {
+	// j.u.s.Stream.filter() may modify nullness of stream elements:
+	if (this.binding.isWellknownMethod(TypeConstants.JAVA_UTIL_STREAM__STREAM, TypeConstants.FILTER)
+			&& returnType instanceof ParameterizedTypeBinding)
+	{
+		ParameterizedTypeBinding parameterizedType = (ParameterizedTypeBinding) returnType;
+		// filtering on Objects::nonNull?
+		if (this.arguments != null && this.arguments.length == 1) {
+			if (this.arguments[0] instanceof ReferenceExpression) {
+				MethodBinding argumentBinding = ((ReferenceExpression) this.arguments[0]).binding;
+				if (argumentBinding.isWellknownMethod(TypeIds.T_JavaUtilObjects, TypeConstants.NON_NULL))
+				{
+					// code pattern detected, now update the return type:
+					if (parameterizedType.arguments.length == 1) {
+						LookupEnvironment environment = scope.environment();
+						TypeBinding updatedTypeArgument = parameterizedType.arguments[0].withoutToplevelNullAnnotation();
+						updatedTypeArgument = environment.createNonNullAnnotatedType(updatedTypeArgument);
+						return environment.createParameterizedType(
+								parameterizedType.genericType(), new TypeBinding[] { updatedTypeArgument }, parameterizedType.enclosingType());
+					}
+				}
+			}
+		}
+	}
+	return returnType;
+}
+
 protected TypeBinding findMethodBinding(BlockScope scope) {
 	ReferenceContext referenceContext = scope.methodScope().referenceContext;
 	if (referenceContext instanceof LambdaExpression) {
@@ -1028,7 +1142,7 @@ protected TypeBinding findMethodBinding(BlockScope scope) {
 				: scope.getMethod(this.actualReceiverType, this.selector, this.argumentTypes, this);
 
 	    if (this.binding instanceof PolyParameterizedGenericMethodBinding) {
-		    this.solutionsPerTargetType = new HashMap<TypeBinding, MethodBinding>();
+		    this.solutionsPerTargetType = new HashMap<>();
 		    return new PolyTypeBinding(this);
 	    }
 	}
@@ -1171,8 +1285,8 @@ public void traverse(ASTVisitor visitor, BlockScope blockScope) {
 	if (visitor.visit(this, blockScope)) {
 		this.receiver.traverse(visitor, blockScope);
 		if (this.typeArguments != null) {
-			for (int i = 0, typeArgumentsLength = this.typeArguments.length; i < typeArgumentsLength; i++) {
-				this.typeArguments[i].traverse(visitor, blockScope);
+			for (TypeReference typeArgument : this.typeArguments) {
+				typeArgument.traverse(visitor, blockScope);
 			}
 		}
 		if (this.arguments != null) {
@@ -1214,7 +1328,7 @@ public void registerResult(TypeBinding targetType, MethodBinding method) {
 				(targetType == null ? "<no type>" : targetType.debugName())+": "+method); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 	if (this.solutionsPerTargetType == null)
-		this.solutionsPerTargetType = new HashMap<TypeBinding, MethodBinding>();
+		this.solutionsPerTargetType = new HashMap<>();
 	this.solutionsPerTargetType.put(targetType, method);
 }
 

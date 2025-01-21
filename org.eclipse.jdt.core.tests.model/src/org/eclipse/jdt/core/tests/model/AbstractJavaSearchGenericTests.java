@@ -13,10 +13,11 @@
  *******************************************************************************/
 package org.eclipse.jdt.core.tests.model;
 
-import org.eclipse.core.runtime.*;
-import org.eclipse.jdt.core.*;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.compiler.CharOperation;
-import org.eclipse.jdt.core.search.*;
+import org.eclipse.jdt.core.search.IJavaSearchScope;
+import org.eclipse.jdt.core.search.SearchRequestor;
 
 /**
  * Abstract class for generic search tests.
@@ -43,7 +44,7 @@ public class AbstractJavaSearchGenericTests extends JavaSearchTests {
 	/*
 	 * Add given line to given buffer.
 	 */
-	void addResultLine(StringBuffer buffer, char[] line) {
+	void addResultLine(StringBuilder buffer, char[] line) {
 		if (buffer.length() > 0) buffer.append('\n');
 		buffer.append(line);
 	}
@@ -53,7 +54,7 @@ public class AbstractJavaSearchGenericTests extends JavaSearchTests {
 	 */
 	final String cleanResults(String expected) {
 		char[][] lines = CharOperation.splitOn('\n', expected.toCharArray());
-		StringBuffer buffer = new StringBuffer(expected.length());
+		StringBuilder buffer = new StringBuilder(expected.length());
 		for (int i=0, n=lines.length; i<n; i++) {
 			addResultLine(buffer, lines[i]);
 		}

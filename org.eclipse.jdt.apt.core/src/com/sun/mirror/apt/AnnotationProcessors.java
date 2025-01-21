@@ -31,7 +31,10 @@
 
 package com.sun.mirror.apt;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Utilities to create specialized annotation processors.
@@ -56,7 +59,7 @@ public class AnnotationProcessors {
     static class CompositeAnnotationProcessor implements AnnotationProcessor {
 
 	private final List<AnnotationProcessor> aps =
-	    new LinkedList<AnnotationProcessor>();
+	    new LinkedList<>();
 
 	/**
 	 * Constructs a new composite annotation processor.

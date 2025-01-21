@@ -35,6 +35,9 @@ import org.eclipse.jdt.internal.compiler.lookup.Binding;
 protected BinaryField(JavaElement parent, String name) {
 	super(parent, name);
 }
+protected BinaryField(JavaElement parent, String name, int occurrenceCount) {
+	super(parent, name, occurrenceCount);
+}
 @Override
 public boolean equals(Object o) {
 	if (!(o instanceof BinaryField)) return false;
@@ -105,15 +108,14 @@ public boolean isResolved() {
 }
 @Override
 public JavaElement resolved(Binding binding) {
-	SourceRefElement resolvedHandle = new ResolvedBinaryField(this.getParent(), this.name, new String(binding.computeUniqueKey()));
-	resolvedHandle.occurrenceCount = this.occurrenceCount;
+	SourceRefElement resolvedHandle = new ResolvedBinaryField(this.getParent(), this.name, new String(binding.computeUniqueKey()), this.getOccurrenceCount());
 	return resolvedHandle;
 }
 /*
- * @private Debugging purposes
+ * for debugging only
  */
 @Override
-protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean showResolvedInfo) {
+protected void toStringInfo(int tab, StringBuilder buffer, Object info, boolean showResolvedInfo) {
 	buffer.append(tabString(tab));
 	if (info == null) {
 		toStringName(buffer);
@@ -132,7 +134,7 @@ protected void toStringInfo(int tab, StringBuffer buffer, Object info, boolean s
 }
 @Override
 public String getAttachedJavadoc(IProgressMonitor monitor) throws JavaModelException {
-	JavadocContents javadocContents = ((BinaryType) this.getDeclaringType()).getJavadocContents(monitor);
+	IJavadocContents javadocContents = ((BinaryType) this.getDeclaringType()).getJavadocContents(monitor);
 	if (javadocContents == null) return null;
 	return javadocContents.getFieldDoc(this);
 }

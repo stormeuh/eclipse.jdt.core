@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2017, 2023 IBM Corporation.
+ * Copyright (c) 2017, 2024 IBM Corporation.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -33,29 +32,18 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.ModuleElement;
+import javax.lang.model.element.*;
 import javax.lang.model.element.ModuleElement.Directive;
 import javax.lang.model.element.ModuleElement.DirectiveKind;
 import javax.lang.model.element.ModuleElement.ExportsDirective;
 import javax.lang.model.element.ModuleElement.ProvidesDirective;
 import javax.lang.model.element.ModuleElement.RequiresDirective;
-import javax.lang.model.element.NestingKind;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.NoType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.JavaFileObject;
-
 import org.eclipse.jdt.compiler.apt.tests.processors.base.BaseProcessor;
 import org.eclipse.jdt.compiler.apt.tests.processors.util.TestDirectiveVisitor;
 import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
@@ -73,6 +61,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 	boolean reportSuccessAlready = true;
 	RoundEnvironment roundEnv = null;
 	Messager _messager = null;
+	boolean isJre23;
 	boolean isJre20;
 	boolean isJre19;
 	boolean isJre18;
@@ -109,6 +98,9 @@ public class Java9ElementProcessor extends BaseProcessor {
 								this.isJre19 = true;
 								if (current >= ClassFileConstants.MAJOR_VERSION_20) {
 									this.isJre20 = true;
+									if (current >= ClassFileConstants.MAJOR_VERSION_23) {
+	                                    this.isJre23 = true;
+	                                }
 								}
 							}
 						}
@@ -236,8 +228,8 @@ public class Java9ElementProcessor extends BaseProcessor {
 				assertFalse("should be a named module", ((ModuleElement) root).isUnnamed());
 			}
 		}
-		Collections.sort(types, (x, y) -> x.compareTo(y));
-		Collections.sort(modules, (x, y) -> x.compareTo(y));
+		Collections.sort(types, String::compareTo);
+		Collections.sort(modules, String::compareTo);
 		assertEquals("incorrect no of modules in root elements", 2, moduleCount);
 		assertEquals("incorrect modules among root elements", "[mod.a, mod.b]", modules.toString());
 		assertEquals("incorrect no of types in root elements", 5, typeCount);
@@ -515,7 +507,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 		assertNotNull("java.base module null", base);
 		List<? extends Directive> directives = base.getDirectives();
 		List<Directive> filterDirective = filterDirective(directives, DirectiveKind.USES);
-		int modCount =  (this.isJre11 || this.isJre12) ? 33 : (this.isJre18 ? (this.isJre20 ? 36 : 35) : 34);
+		int modCount =  (this.isJre11 || this.isJre12) ? 33 : (this.isJre18 ? (this.isJre20 ? (this.isJre23 ? 35 : 36) : 35) : 34);
 		assertEquals("incorrect no of uses", modCount, filterDirective.size());
 	}
 	/*
@@ -532,7 +524,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 		assertNotNull("java.base module null", base);
 		List<? extends Directive> directives = base.getDirectives();
 		List<Directive> filterDirective = filterDirective(directives, DirectiveKind.PROVIDES);
-		assertEquals("incorrect no of provides", (isJre17 ? (this.isJavac ? 4 : 2) : 1), filterDirective.size());
+		assertEquals("incorrect no of provides", ((isJre17 && !isJre23) ? (this.isJavac ? 4 : 2) : 1), filterDirective.size());
 		ProvidesDirective provides = (ProvidesDirective) filterDirective.get(0);
 		assertEquals("incorrect service name", "java.nio.file.spi.FileSystemProvider", provides.getService().getQualifiedName().toString());
 		List<? extends TypeElement> implementations = provides.getImplementations();
@@ -1229,7 +1221,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 		throw new AssertionFailedError(msg);
 	}
 	protected String getExceptionStackTrace(Throwable t) {
-		StringBuffer buf = new StringBuffer(t.getMessage());
+		StringBuilder buf = new StringBuilder(t.getMessage());
 		StackTraceElement[] traces = t.getStackTrace();
 		for (int i = 0; i < traces.length; i++) {
 			StackTraceElement trace = traces[i];
@@ -1241,7 +1233,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 	}
 	public void assertModifiers(Set<Modifier> modifiers, String[] expected) {
 		assertEquals("Incorrect no of modifiers", modifiers.size(), expected.length);
-		Set<String> actual = new HashSet<String>(expected.length);
+		Set<String> actual = new HashSet<>(expected.length);
 		for (Modifier modifier : modifiers) {
 			actual.add(modifier.toString());
 		}
@@ -1310,7 +1302,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 
 	public void assertEquals(String msg, int expected, int actual) {
 		if (expected != actual) {
-			StringBuffer buf = new StringBuffer();
+			StringBuilder buf = new StringBuilder();
 			buf.append(msg);
 			buf.append(", expected " + expected + " but was " + actual);
 			reportError(buf.toString());
@@ -1333,7 +1325,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 	private String getAnnotationString(AnnotationMirror annot) {
 		DeclaredType annotType = annot.getAnnotationType();
 		TypeElement type = (TypeElement) annotType.asElement();
-		StringBuffer buf = new StringBuffer("@" + type.getQualifiedName());
+		StringBuilder buf = new StringBuilder("@" + type.getQualifiedName());
 		Map<? extends ExecutableElement, ? extends AnnotationValue> values = annot.getElementValues();
 		Set<? extends ExecutableElement> keys = values.keySet();
 		buf.append('(');
@@ -1357,7 +1349,7 @@ public class Java9ElementProcessor extends BaseProcessor {
 		buf.append(')');
 		return buf.toString();
 	}
-	private class AssertionFailedError extends Error {
+	private static class AssertionFailedError extends Error {
 		private static final long serialVersionUID = 1L;
 
 		public AssertionFailedError(String msg) {
